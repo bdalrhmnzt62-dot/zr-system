@@ -14,16 +14,304 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      customers: {
+        Row: {
+          car_make: string | null
+          car_model: string | null
+          car_year: string | null
+          created_at: string
+          full_name: string
+          id: string
+          notes: string | null
+          owner_id: string
+          phone: string | null
+          plate_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          car_make?: string | null
+          car_model?: string | null
+          car_year?: string | null
+          created_at?: string
+          full_name: string
+          id?: string
+          notes?: string | null
+          owner_id: string
+          phone?: string | null
+          plate_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          car_make?: string | null
+          car_model?: string | null
+          car_year?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          notes?: string | null
+          owner_id?: string
+          phone?: string | null
+          plate_number?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inspection_items: {
+        Row: {
+          category: Database["public"]["Enums"]["inspection_category"]
+          created_at: string
+          id: string
+          inspection_id: string
+          item_name: string
+          notes: string | null
+          owner_id: string
+          status: Database["public"]["Enums"]["inspection_item_status"]
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["inspection_category"]
+          created_at?: string
+          id?: string
+          inspection_id: string
+          item_name: string
+          notes?: string | null
+          owner_id: string
+          status?: Database["public"]["Enums"]["inspection_item_status"]
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["inspection_category"]
+          created_at?: string
+          id?: string
+          inspection_id?: string
+          item_name?: string
+          notes?: string | null
+          owner_id?: string
+          status?: Database["public"]["Enums"]["inspection_item_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_items_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspections: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          id: string
+          notes: string | null
+          owner_id: string
+          title: string
+          updated_at: string
+          work_order_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          notes?: string | null
+          owner_id: string
+          title: string
+          updated_at?: string
+          work_order_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          notes?: string | null
+          owner_id?: string
+          title?: string
+          updated_at?: string
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspections_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      license_keys: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          client_name: string
+          created_at: string
+          created_by: string | null
+          device_id: string | null
+          duration_days: number
+          expires_at: string | null
+          id: string
+          key: string
+          notes: string | null
+          status: Database["public"]["Enums"]["license_status"]
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          client_name: string
+          created_at?: string
+          created_by?: string | null
+          device_id?: string | null
+          duration_days?: number
+          expires_at?: string | null
+          id?: string
+          key: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["license_status"]
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          device_id?: string | null
+          duration_days?: number
+          expires_at?: string | null
+          id?: string
+          key?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["license_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          license_key_id: string | null
+          phone: string | null
+          updated_at: string
+          workshop_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          license_key_id?: string | null
+          phone?: string | null
+          updated_at?: string
+          workshop_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          license_key_id?: string | null
+          phone?: string | null
+          updated_at?: string
+          workshop_name?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      work_orders: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          description: string | null
+          id: string
+          owner_id: string
+          status: Database["public"]["Enums"]["work_order_status"]
+          title: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          owner_id: string
+          status?: Database["public"]["Enums"]["work_order_status"]
+          title: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          owner_id?: string
+          status?: Database["public"]["Enums"]["work_order_status"]
+          title?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_active_license: { Args: { _user_id: string }; Returns: boolean }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "client"
+      inspection_category:
+        | "electrical"
+        | "mechanical"
+        | "suspension"
+        | "bodywork"
+      inspection_item_status: "good" | "monitor" | "repair"
+      license_status: "pending" | "active" | "expired" | "revoked"
+      work_order_status: "open" | "in_progress" | "completed" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +438,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "client"],
+      inspection_category: [
+        "electrical",
+        "mechanical",
+        "suspension",
+        "bodywork",
+      ],
+      inspection_item_status: ["good", "monitor", "repair"],
+      license_status: ["pending", "active", "expired", "revoked"],
+      work_order_status: ["open", "in_progress", "completed", "cancelled"],
+    },
   },
 } as const
