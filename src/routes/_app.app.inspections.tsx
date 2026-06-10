@@ -167,7 +167,7 @@ function InspectionDetail({ id, onBack }: { id: string; onBack: () => void }) {
     mutationFn: async ({ category, name }: { category: string; name: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("غير مسجل");
-      const { error } = await supabase.from("inspection_items").insert({ inspection_id: id, owner_id: user.id, category, item_name: name, status: "good" });
+      const { error } = await supabase.from("inspection_items").insert({ inspection_id: id, owner_id: user.id, category: category as any, item_name: name, status: "good" });
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["inspection_items", id] }),

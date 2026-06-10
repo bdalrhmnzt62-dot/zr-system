@@ -34,7 +34,7 @@ function CustomersPage() {
     mutationFn: async (input: Record<string, string>) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("غير مسجل");
-      const { error } = await supabase.from("customers").insert({ ...input, owner_id: user.id });
+      const { error } = await supabase.from("customers").insert({ ...input, owner_id: user.id } as any);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["customers"] }); setOpen(false); toast.success("تم إضافة العميل"); },
