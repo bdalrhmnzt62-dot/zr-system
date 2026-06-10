@@ -11,7 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ActivateRouteImport } from './routes/activate'
+import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminSetupRouteImport } from './routes/admin.setup'
+import { Route as AdminAdminLicensesRouteImport } from './routes/_admin.admin.licenses'
+import { Route as AdminAdminDashboardRouteImport } from './routes/_admin.admin.dashboard'
+import { Route as AdminAdminCustomersRouteImport } from './routes/_admin.admin.customers'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -23,40 +28,102 @@ const ActivateRoute = ActivateRouteImport.update({
   path: '/activate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/_admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSetupRoute = AdminSetupRouteImport.update({
+  id: '/admin/setup',
+  path: '/admin/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAdminLicensesRoute = AdminAdminLicensesRouteImport.update({
+  id: '/admin/licenses',
+  path: '/admin/licenses',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminDashboardRoute = AdminAdminDashboardRouteImport.update({
+  id: '/admin/dashboard',
+  path: '/admin/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminCustomersRoute = AdminAdminCustomersRouteImport.update({
+  id: '/admin/customers',
+  path: '/admin/customers',
+  getParentRoute: () => AdminRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activate': typeof ActivateRoute
   '/auth': typeof AuthRoute
+  '/admin/setup': typeof AdminSetupRoute
+  '/admin/customers': typeof AdminAdminCustomersRoute
+  '/admin/dashboard': typeof AdminAdminDashboardRoute
+  '/admin/licenses': typeof AdminAdminLicensesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activate': typeof ActivateRoute
   '/auth': typeof AuthRoute
+  '/admin/setup': typeof AdminSetupRoute
+  '/admin/customers': typeof AdminAdminCustomersRoute
+  '/admin/dashboard': typeof AdminAdminDashboardRoute
+  '/admin/licenses': typeof AdminAdminLicensesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_admin': typeof AdminRouteWithChildren
   '/activate': typeof ActivateRoute
   '/auth': typeof AuthRoute
+  '/admin/setup': typeof AdminSetupRoute
+  '/_admin/admin/customers': typeof AdminAdminCustomersRoute
+  '/_admin/admin/dashboard': typeof AdminAdminDashboardRoute
+  '/_admin/admin/licenses': typeof AdminAdminLicensesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/activate' | '/auth'
+  fullPaths:
+    | '/'
+    | '/activate'
+    | '/auth'
+    | '/admin/setup'
+    | '/admin/customers'
+    | '/admin/dashboard'
+    | '/admin/licenses'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/activate' | '/auth'
-  id: '__root__' | '/' | '/activate' | '/auth'
+  to:
+    | '/'
+    | '/activate'
+    | '/auth'
+    | '/admin/setup'
+    | '/admin/customers'
+    | '/admin/dashboard'
+    | '/admin/licenses'
+  id:
+    | '__root__'
+    | '/'
+    | '/_admin'
+    | '/activate'
+    | '/auth'
+    | '/admin/setup'
+    | '/_admin/admin/customers'
+    | '/_admin/admin/dashboard'
+    | '/_admin/admin/licenses'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   ActivateRoute: typeof ActivateRoute
   AuthRoute: typeof AuthRoute
+  AdminSetupRoute: typeof AdminSetupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,6 +142,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ActivateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_admin': {
+      id: '/_admin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -82,13 +156,57 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/setup': {
+      id: '/admin/setup'
+      path: '/admin/setup'
+      fullPath: '/admin/setup'
+      preLoaderRoute: typeof AdminSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_admin/admin/licenses': {
+      id: '/_admin/admin/licenses'
+      path: '/admin/licenses'
+      fullPath: '/admin/licenses'
+      preLoaderRoute: typeof AdminAdminLicensesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/dashboard': {
+      id: '/_admin/admin/dashboard'
+      path: '/admin/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminAdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/customers': {
+      id: '/_admin/admin/customers'
+      path: '/admin/customers'
+      fullPath: '/admin/customers'
+      preLoaderRoute: typeof AdminAdminCustomersRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminAdminCustomersRoute: typeof AdminAdminCustomersRoute
+  AdminAdminDashboardRoute: typeof AdminAdminDashboardRoute
+  AdminAdminLicensesRoute: typeof AdminAdminLicensesRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAdminCustomersRoute: AdminAdminCustomersRoute,
+  AdminAdminDashboardRoute: AdminAdminDashboardRoute,
+  AdminAdminLicensesRoute: AdminAdminLicensesRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   ActivateRoute: ActivateRoute,
   AuthRoute: AuthRoute,
+  AdminSetupRoute: AdminSetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
