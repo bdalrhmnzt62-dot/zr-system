@@ -11,9 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ActivateRouteImport } from './routes/activate'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminSetupRouteImport } from './routes/admin.setup'
+import { Route as AppAppWorkOrdersRouteImport } from './routes/_app.app.work-orders'
+import { Route as AppAppInspectionsRouteImport } from './routes/_app.app.inspections'
+import { Route as AppAppDashboardRouteImport } from './routes/_app.app.dashboard'
+import { Route as AppAppCustomersRouteImport } from './routes/_app.app.customers'
 import { Route as AdminAdminLicensesRouteImport } from './routes/_admin.admin.licenses'
 import { Route as AdminAdminDashboardRouteImport } from './routes/_admin.admin.dashboard'
 import { Route as AdminAdminCustomersRouteImport } from './routes/_admin.admin.customers'
@@ -26,6 +31,10 @@ const AuthRoute = AuthRouteImport.update({
 const ActivateRoute = ActivateRouteImport.update({
   id: '/activate',
   path: '/activate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -41,6 +50,26 @@ const AdminSetupRoute = AdminSetupRouteImport.update({
   id: '/admin/setup',
   path: '/admin/setup',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppAppWorkOrdersRoute = AppAppWorkOrdersRouteImport.update({
+  id: '/app/work-orders',
+  path: '/app/work-orders',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAppInspectionsRoute = AppAppInspectionsRouteImport.update({
+  id: '/app/inspections',
+  path: '/app/inspections',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAppDashboardRoute = AppAppDashboardRouteImport.update({
+  id: '/app/dashboard',
+  path: '/app/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAppCustomersRoute = AppAppCustomersRouteImport.update({
+  id: '/app/customers',
+  path: '/app/customers',
+  getParentRoute: () => AppRoute,
 } as any)
 const AdminAdminLicensesRoute = AdminAdminLicensesRouteImport.update({
   id: '/admin/licenses',
@@ -66,6 +95,10 @@ export interface FileRoutesByFullPath {
   '/admin/customers': typeof AdminAdminCustomersRoute
   '/admin/dashboard': typeof AdminAdminDashboardRoute
   '/admin/licenses': typeof AdminAdminLicensesRoute
+  '/app/customers': typeof AppAppCustomersRoute
+  '/app/dashboard': typeof AppAppDashboardRoute
+  '/app/inspections': typeof AppAppInspectionsRoute
+  '/app/work-orders': typeof AppAppWorkOrdersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -75,17 +108,26 @@ export interface FileRoutesByTo {
   '/admin/customers': typeof AdminAdminCustomersRoute
   '/admin/dashboard': typeof AdminAdminDashboardRoute
   '/admin/licenses': typeof AdminAdminLicensesRoute
+  '/app/customers': typeof AppAppCustomersRoute
+  '/app/dashboard': typeof AppAppDashboardRoute
+  '/app/inspections': typeof AppAppInspectionsRoute
+  '/app/work-orders': typeof AppAppWorkOrdersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_admin': typeof AdminRouteWithChildren
+  '/_app': typeof AppRouteWithChildren
   '/activate': typeof ActivateRoute
   '/auth': typeof AuthRoute
   '/admin/setup': typeof AdminSetupRoute
   '/_admin/admin/customers': typeof AdminAdminCustomersRoute
   '/_admin/admin/dashboard': typeof AdminAdminDashboardRoute
   '/_admin/admin/licenses': typeof AdminAdminLicensesRoute
+  '/_app/app/customers': typeof AppAppCustomersRoute
+  '/_app/app/dashboard': typeof AppAppDashboardRoute
+  '/_app/app/inspections': typeof AppAppInspectionsRoute
+  '/_app/app/work-orders': typeof AppAppWorkOrdersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,6 +139,10 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/dashboard'
     | '/admin/licenses'
+    | '/app/customers'
+    | '/app/dashboard'
+    | '/app/inspections'
+    | '/app/work-orders'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -106,21 +152,31 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/dashboard'
     | '/admin/licenses'
+    | '/app/customers'
+    | '/app/dashboard'
+    | '/app/inspections'
+    | '/app/work-orders'
   id:
     | '__root__'
     | '/'
     | '/_admin'
+    | '/_app'
     | '/activate'
     | '/auth'
     | '/admin/setup'
     | '/_admin/admin/customers'
     | '/_admin/admin/dashboard'
     | '/_admin/admin/licenses'
+    | '/_app/app/customers'
+    | '/_app/app/dashboard'
+    | '/_app/app/inspections'
+    | '/_app/app/work-orders'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  AppRoute: typeof AppRouteWithChildren
   ActivateRoute: typeof ActivateRoute
   AuthRoute: typeof AuthRoute
   AdminSetupRoute: typeof AdminSetupRoute
@@ -140,6 +196,13 @@ declare module '@tanstack/react-router' {
       path: '/activate'
       fullPath: '/activate'
       preLoaderRoute: typeof ActivateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_admin': {
@@ -162,6 +225,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/setup'
       preLoaderRoute: typeof AdminSetupRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/app/work-orders': {
+      id: '/_app/app/work-orders'
+      path: '/app/work-orders'
+      fullPath: '/app/work-orders'
+      preLoaderRoute: typeof AppAppWorkOrdersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/app/inspections': {
+      id: '/_app/app/inspections'
+      path: '/app/inspections'
+      fullPath: '/app/inspections'
+      preLoaderRoute: typeof AppAppInspectionsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/app/dashboard': {
+      id: '/_app/app/dashboard'
+      path: '/app/dashboard'
+      fullPath: '/app/dashboard'
+      preLoaderRoute: typeof AppAppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/app/customers': {
+      id: '/_app/app/customers'
+      path: '/app/customers'
+      fullPath: '/app/customers'
+      preLoaderRoute: typeof AppAppCustomersRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_admin/admin/licenses': {
       id: '/_admin/admin/licenses'
@@ -201,9 +292,26 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface AppRouteChildren {
+  AppAppCustomersRoute: typeof AppAppCustomersRoute
+  AppAppDashboardRoute: typeof AppAppDashboardRoute
+  AppAppInspectionsRoute: typeof AppAppInspectionsRoute
+  AppAppWorkOrdersRoute: typeof AppAppWorkOrdersRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAppCustomersRoute: AppAppCustomersRoute,
+  AppAppDashboardRoute: AppAppDashboardRoute,
+  AppAppInspectionsRoute: AppAppInspectionsRoute,
+  AppAppWorkOrdersRoute: AppAppWorkOrdersRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  AppRoute: AppRouteWithChildren,
   ActivateRoute: ActivateRoute,
   AuthRoute: AuthRoute,
   AdminSetupRoute: AdminSetupRoute,
