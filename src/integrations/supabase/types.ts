@@ -56,6 +56,42 @@ export type Database = {
         }
         Relationships: []
       }
+      expenses: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          expense_date: string
+          id: string
+          notes: string | null
+          owner_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          owner_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          owner_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inspection_items: {
         Row: {
           category: Database["public"]["Enums"]["inspection_category"]
@@ -138,6 +174,149 @@ export type Database = {
           },
           {
             foreignKeyName: "inspections_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_items: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          owner_id: string
+          quantity: number
+          sku: string | null
+          unit_cost: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          owner_id: string
+          quantity?: number
+          sku?: string | null
+          unit_cost?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          owner_id?: string
+          quantity?: number
+          sku?: string | null
+          unit_cost?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoice_items: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          owner_id: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          owner_id: string
+          quantity?: number
+          unit_price?: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          owner_id?: string
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          id: string
+          invoice_number: string
+          issued_date: string
+          notes: string | null
+          owner_id: string
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax: number
+          total: number
+          updated_at: string
+          work_order_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          invoice_number: string
+          issued_date?: string
+          notes?: string | null
+          owner_id: string
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax?: number
+          total?: number
+          updated_at?: string
+          work_order_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          invoice_number?: string
+          issued_date?: string
+          notes?: string | null
+          owner_id?: string
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax?: number
+          total?: number
+          updated_at?: string
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_work_order_id_fkey"
             columns: ["work_order_id"]
             isOneToOne: false
             referencedRelation: "work_orders"
@@ -310,6 +489,7 @@ export type Database = {
         | "suspension"
         | "bodywork"
       inspection_item_status: "good" | "monitor" | "repair"
+      invoice_status: "draft" | "issued" | "paid" | "cancelled"
       license_status: "pending" | "active" | "expired" | "revoked"
       work_order_status: "open" | "in_progress" | "completed" | "cancelled"
     }
@@ -447,6 +627,7 @@ export const Constants = {
         "bodywork",
       ],
       inspection_item_status: ["good", "monitor", "repair"],
+      invoice_status: ["draft", "issued", "paid", "cancelled"],
       license_status: ["pending", "active", "expired", "revoked"],
       work_order_status: ["open", "in_progress", "completed", "cancelled"],
     },
