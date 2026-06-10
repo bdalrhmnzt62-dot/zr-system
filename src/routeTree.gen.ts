@@ -16,7 +16,11 @@ import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminSetupRouteImport } from './routes/admin.setup'
 import { Route as AppAppWorkOrdersRouteImport } from './routes/_app.app.work-orders'
+import { Route as AppAppReportsRouteImport } from './routes/_app.app.reports'
+import { Route as AppAppInvoicesRouteImport } from './routes/_app.app.invoices'
+import { Route as AppAppInventoryRouteImport } from './routes/_app.app.inventory'
 import { Route as AppAppInspectionsRouteImport } from './routes/_app.app.inspections'
+import { Route as AppAppExpensesRouteImport } from './routes/_app.app.expenses'
 import { Route as AppAppDashboardRouteImport } from './routes/_app.app.dashboard'
 import { Route as AppAppCustomersRouteImport } from './routes/_app.app.customers'
 import { Route as AdminAdminLicensesRouteImport } from './routes/_admin.admin.licenses'
@@ -56,9 +60,29 @@ const AppAppWorkOrdersRoute = AppAppWorkOrdersRouteImport.update({
   path: '/app/work-orders',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAppReportsRoute = AppAppReportsRouteImport.update({
+  id: '/app/reports',
+  path: '/app/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAppInvoicesRoute = AppAppInvoicesRouteImport.update({
+  id: '/app/invoices',
+  path: '/app/invoices',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAppInventoryRoute = AppAppInventoryRouteImport.update({
+  id: '/app/inventory',
+  path: '/app/inventory',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAppInspectionsRoute = AppAppInspectionsRouteImport.update({
   id: '/app/inspections',
   path: '/app/inspections',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAppExpensesRoute = AppAppExpensesRouteImport.update({
+  id: '/app/expenses',
+  path: '/app/expenses',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAppDashboardRoute = AppAppDashboardRouteImport.update({
@@ -97,7 +121,11 @@ export interface FileRoutesByFullPath {
   '/admin/licenses': typeof AdminAdminLicensesRoute
   '/app/customers': typeof AppAppCustomersRoute
   '/app/dashboard': typeof AppAppDashboardRoute
+  '/app/expenses': typeof AppAppExpensesRoute
   '/app/inspections': typeof AppAppInspectionsRoute
+  '/app/inventory': typeof AppAppInventoryRoute
+  '/app/invoices': typeof AppAppInvoicesRoute
+  '/app/reports': typeof AppAppReportsRoute
   '/app/work-orders': typeof AppAppWorkOrdersRoute
 }
 export interface FileRoutesByTo {
@@ -110,7 +138,11 @@ export interface FileRoutesByTo {
   '/admin/licenses': typeof AdminAdminLicensesRoute
   '/app/customers': typeof AppAppCustomersRoute
   '/app/dashboard': typeof AppAppDashboardRoute
+  '/app/expenses': typeof AppAppExpensesRoute
   '/app/inspections': typeof AppAppInspectionsRoute
+  '/app/inventory': typeof AppAppInventoryRoute
+  '/app/invoices': typeof AppAppInvoicesRoute
+  '/app/reports': typeof AppAppReportsRoute
   '/app/work-orders': typeof AppAppWorkOrdersRoute
 }
 export interface FileRoutesById {
@@ -126,7 +158,11 @@ export interface FileRoutesById {
   '/_admin/admin/licenses': typeof AdminAdminLicensesRoute
   '/_app/app/customers': typeof AppAppCustomersRoute
   '/_app/app/dashboard': typeof AppAppDashboardRoute
+  '/_app/app/expenses': typeof AppAppExpensesRoute
   '/_app/app/inspections': typeof AppAppInspectionsRoute
+  '/_app/app/inventory': typeof AppAppInventoryRoute
+  '/_app/app/invoices': typeof AppAppInvoicesRoute
+  '/_app/app/reports': typeof AppAppReportsRoute
   '/_app/app/work-orders': typeof AppAppWorkOrdersRoute
 }
 export interface FileRouteTypes {
@@ -141,7 +177,11 @@ export interface FileRouteTypes {
     | '/admin/licenses'
     | '/app/customers'
     | '/app/dashboard'
+    | '/app/expenses'
     | '/app/inspections'
+    | '/app/inventory'
+    | '/app/invoices'
+    | '/app/reports'
     | '/app/work-orders'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -154,7 +194,11 @@ export interface FileRouteTypes {
     | '/admin/licenses'
     | '/app/customers'
     | '/app/dashboard'
+    | '/app/expenses'
     | '/app/inspections'
+    | '/app/inventory'
+    | '/app/invoices'
+    | '/app/reports'
     | '/app/work-orders'
   id:
     | '__root__'
@@ -169,7 +213,11 @@ export interface FileRouteTypes {
     | '/_admin/admin/licenses'
     | '/_app/app/customers'
     | '/_app/app/dashboard'
+    | '/_app/app/expenses'
     | '/_app/app/inspections'
+    | '/_app/app/inventory'
+    | '/_app/app/invoices'
+    | '/_app/app/reports'
     | '/_app/app/work-orders'
   fileRoutesById: FileRoutesById
 }
@@ -233,11 +281,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppWorkOrdersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/app/reports': {
+      id: '/_app/app/reports'
+      path: '/app/reports'
+      fullPath: '/app/reports'
+      preLoaderRoute: typeof AppAppReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/app/invoices': {
+      id: '/_app/app/invoices'
+      path: '/app/invoices'
+      fullPath: '/app/invoices'
+      preLoaderRoute: typeof AppAppInvoicesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/app/inventory': {
+      id: '/_app/app/inventory'
+      path: '/app/inventory'
+      fullPath: '/app/inventory'
+      preLoaderRoute: typeof AppAppInventoryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/app/inspections': {
       id: '/_app/app/inspections'
       path: '/app/inspections'
       fullPath: '/app/inspections'
       preLoaderRoute: typeof AppAppInspectionsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/app/expenses': {
+      id: '/_app/app/expenses'
+      path: '/app/expenses'
+      fullPath: '/app/expenses'
+      preLoaderRoute: typeof AppAppExpensesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/app/dashboard': {
@@ -295,14 +371,22 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface AppRouteChildren {
   AppAppCustomersRoute: typeof AppAppCustomersRoute
   AppAppDashboardRoute: typeof AppAppDashboardRoute
+  AppAppExpensesRoute: typeof AppAppExpensesRoute
   AppAppInspectionsRoute: typeof AppAppInspectionsRoute
+  AppAppInventoryRoute: typeof AppAppInventoryRoute
+  AppAppInvoicesRoute: typeof AppAppInvoicesRoute
+  AppAppReportsRoute: typeof AppAppReportsRoute
   AppAppWorkOrdersRoute: typeof AppAppWorkOrdersRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAppCustomersRoute: AppAppCustomersRoute,
   AppAppDashboardRoute: AppAppDashboardRoute,
+  AppAppExpensesRoute: AppAppExpensesRoute,
   AppAppInspectionsRoute: AppAppInspectionsRoute,
+  AppAppInventoryRoute: AppAppInventoryRoute,
+  AppAppInvoicesRoute: AppAppInvoicesRoute,
+  AppAppReportsRoute: AppAppReportsRoute,
   AppAppWorkOrdersRoute: AppAppWorkOrdersRoute,
 }
 
