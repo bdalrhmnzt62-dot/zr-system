@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Loader2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Loader2, ArrowLeft, Printer } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/app/inspections")({
@@ -141,7 +142,7 @@ function InspectionDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const { data: inspection } = useQuery({
     queryKey: ["inspection", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("inspections").select("*, customers(full_name, plate_number)").eq("id", id).single();
+      const { data, error } = await supabase.from("inspections").select("*, customers(full_name, phone, plate_number, car_make, car_model, car_year)").eq("id", id).single();
       if (error) throw error;
       return data;
     },
@@ -153,6 +154,10 @@ function InspectionDetail({ id, onBack }: { id: string; onBack: () => void }) {
       if (error) throw error;
       return data ?? [];
     },
+  });
+  const { data: profile } = useQuery({
+    queryKey: ["my-profile"],
+    queryFn: async () => { const { data: { user } } = await supabase.auth.getUser(); if (!user) return null; const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single(); return data; },
   });
 
   const updateItem = useMutation({
@@ -178,59 +183,158 @@ function InspectionDetail({ id, onBack }: { id: string; onBack: () => void }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["inspection_items", id] }),
   });
 
+  const cust = inspection?.customers as any;
+  const carInfo = cust ? [cust.car_make, cust.car_model, cust.car_year].filter(Boolean).join(" ") : "";
+
   return (
     <div className="space-y-4">
-      <Button variant="ghost" onClick={onBack}><ArrowLeft className="ms-2 h-4 w-4 rotate-180" /> العودة</Button>
-      <Card className="shadow-card">
-        <CardContent className="p-5">
-          <h2 className="text-xl font-extrabold">{inspection?.title}</h2>
-          <p className="text-sm text-muted-foreground">{inspection?.customers?.full_name ?? "بدون عميل"} • {inspection?.created_at ? new Date(inspection.created_at).toISOString().slice(0, 10) : ""}</p>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap items-center justify-between gap-2 no-print">
+        <Button variant="ghost" onClick={onBack}><ArrowLeft className="ms-2 h-4 w-4 rotate-180" /> العودة</Button>
+        <Button onClick={() => window.print()} className="gradient-primary text-primary-foreground">
+          <Printer className="ms-2 h-4 w-4" /> طباعة التقرير
+        </Button>
+      </div>
 
-      <Tabs defaultValue="electrical">
-        <TabsList className="grid w-full grid-cols-4">
-          {Object.entries(CATEGORY_LABEL).map(([k, v]) => <TabsTrigger key={k} value={k}>{v}</TabsTrigger>)}
-        </TabsList>
-        {Object.keys(CATEGORY_LABEL).map((cat) => {
-          const catItems = items.filter((i: any) => i.category === cat);
-          return (
-            <TabsContent key={cat} value={cat} className="mt-4 space-y-3">
-              {catItems.map((it: any) => (
-                <Card key={it.id}>
-                  <CardContent className="space-y-3 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="flex-1 font-medium">{it.item_name}</p>
-                      <Badge variant="outline" className={STATUS_COLOR[it.status]}>{STATUS_LABEL[it.status]}</Badge>
-                      <Button size="sm" variant="ghost" onClick={() => delItem.mutate(it.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.keys(STATUS_LABEL).map((s) => (
-                        <Button key={s} size="sm" variant={it.status === s ? "default" : "outline"} onClick={() => updateItem.mutate({ itemId: it.id, patch: { status: s } })}>
-                          {STATUS_LABEL[s]}
-                        </Button>
+      {/* Editable view — hidden in print */}
+      <div className="no-print space-y-4">
+        <Card className="shadow-card">
+          <CardContent className="p-5">
+            <h2 className="text-xl font-extrabold">{inspection?.title}</h2>
+            <p className="text-sm text-muted-foreground">{cust?.full_name ?? "بدون عميل"} • {inspection?.created_at ? new Date(inspection.created_at).toISOString().slice(0, 10) : ""}</p>
+          </CardContent>
+        </Card>
+
+        <Tabs defaultValue="electrical">
+          <TabsList className="grid w-full grid-cols-4">
+            {Object.entries(CATEGORY_LABEL).map(([k, v]) => <TabsTrigger key={k} value={k}>{v}</TabsTrigger>)}
+          </TabsList>
+          {Object.keys(CATEGORY_LABEL).map((cat) => {
+            const catItems = items.filter((i: any) => i.category === cat);
+            return (
+              <TabsContent key={cat} value={cat} className="mt-4 space-y-3">
+                {catItems.map((it: any) => (
+                  <Card key={it.id}>
+                    <CardContent className="space-y-3 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="flex-1 font-medium">{it.item_name}</p>
+                        <Badge variant="outline" className={STATUS_COLOR[it.status]}>{STATUS_LABEL[it.status]}</Badge>
+                        <Button size="sm" variant="ghost" onClick={() => delItem.mutate(it.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.keys(STATUS_LABEL).map((s) => (
+                          <Button key={s} size="sm" variant={it.status === s ? "default" : "outline"} onClick={() => updateItem.mutate({ itemId: it.id, patch: { status: s } })}>
+                            {STATUS_LABEL[s]}
+                          </Button>
+                        ))}
+                      </div>
+                      <Textarea
+                        defaultValue={it.notes ?? ""}
+                        placeholder="ملاحظات..."
+                        onBlur={(e) => { if (e.target.value !== (it.notes ?? "")) updateItem.mutate({ itemId: it.id, patch: { notes: e.target.value } }); }}
+                        maxLength={1000}
+                      />
+                    </CardContent>
+                  </Card>
+                ))}
+                <form
+                  onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); const name = String(f.get("name") || "").trim(); if (!name) return; addItem.mutate({ category: cat, name }); (e.currentTarget as HTMLFormElement).reset(); }}
+                  className="flex gap-2"
+                >
+                  <Input name="name" placeholder="إضافة عنصر..." maxLength={120} />
+                  <Button type="submit" variant="outline"><Plus className="h-4 w-4" /></Button>
+                </form>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
+      </div>
+
+      {/* Printable report — only visible in print, plus a screen preview wrapper */}
+      <div className="print-only-container">
+        <div className="rounded-2xl border bg-card p-8 shadow-card print:border-0 print:shadow-none">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b pb-6">
+            <div>
+              <Logo />
+              <p className="mt-3 text-sm font-bold">{profile?.workshop_name || profile?.full_name || "ZR System"}</p>
+              {profile?.phone && <p className="text-xs text-muted-foreground" dir="ltr">{profile.phone}</p>}
+            </div>
+            <div className="text-end">
+              <div className="inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-1.5 text-xs font-bold text-accent-foreground">
+                تقرير كشف فني
+              </div>
+              <p className="mt-2 text-sm font-bold">{inspection?.title}</p>
+              <p className="font-mono text-xs text-muted-foreground">{inspection?.created_at ? new Date(inspection.created_at).toISOString().slice(0, 10) : ""}</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 border-b py-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs text-muted-foreground">العميل</p>
+              <p className="font-bold">{cust?.full_name ?? "—"}</p>
+              {cust?.phone && <p className="font-mono text-xs text-muted-foreground" dir="ltr">{cust.phone}</p>}
+            </div>
+            {(carInfo || cust?.plate_number) && (
+              <div>
+                <p className="text-xs text-muted-foreground">السيارة</p>
+                <p className="font-bold">{carInfo || "—"}</p>
+                {cust?.plate_number && <p className="font-mono text-xs">{cust.plate_number}</p>}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-5 py-4">
+            {Object.entries(CATEGORY_LABEL).map(([cat, label]) => {
+              const catItems = items.filter((i: any) => i.category === cat);
+              if (catItems.length === 0) return null;
+              return (
+                <div key={cat} className="page-break-avoid">
+                  <h3 className="mb-2 border-b pb-1 text-base font-extrabold text-primary">{label}</h3>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-end text-xs text-muted-foreground">
+                        <th className="py-1.5 text-start font-semibold">العنصر</th>
+                        <th className="py-1.5 font-semibold">الحالة</th>
+                        <th className="py-1.5 text-start font-semibold">ملاحظات</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {catItems.map((it: any) => (
+                        <tr key={it.id} className="border-t">
+                          <td className="py-2 align-top font-medium">{it.item_name}</td>
+                          <td className="py-2 align-top">
+                            <span className={`inline-block rounded border px-2 py-0.5 text-xs font-bold ${STATUS_COLOR[it.status]}`}>{STATUS_LABEL[it.status]}</span>
+                          </td>
+                          <td className="py-2 align-top text-xs text-muted-foreground">{it.notes || "—"}</td>
+                        </tr>
                       ))}
-                    </div>
-                    <Textarea
-                      defaultValue={it.notes ?? ""}
-                      placeholder="ملاحظات..."
-                      onBlur={(e) => { if (e.target.value !== (it.notes ?? "")) updateItem.mutate({ itemId: it.id, patch: { notes: e.target.value } }); }}
-                      maxLength={1000}
-                    />
-                  </CardContent>
-                </Card>
-              ))}
-              <form
-                onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); const name = String(f.get("name") || "").trim(); if (!name) return; addItem.mutate({ category: cat, name }); (e.currentTarget as HTMLFormElement).reset(); }}
-                className="flex gap-2"
-              >
-                <Input name="name" placeholder="إضافة عنصر..." maxLength={120} />
-                <Button type="submit" variant="outline"><Plus className="h-4 w-4" /></Button>
-              </form>
-            </TabsContent>
-          );
-        })}
-      </Tabs>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+
+          {inspection?.notes && (
+            <div className="mt-4 border-t pt-4 text-sm">
+              <p className="mb-1 font-bold">ملاحظات عامة:</p>
+              <p className="text-muted-foreground">{inspection.notes}</p>
+            </div>
+          )}
+
+          <div className="mt-10 grid grid-cols-2 gap-8 border-t pt-6 text-xs">
+            <div>
+              <p className="mb-8 text-muted-foreground">توقيع الفني</p>
+              <div className="border-t pt-1">_________________________</div>
+            </div>
+            <div className="text-end">
+              <p className="mb-8 text-muted-foreground">توقيع العميل</p>
+              <div className="border-t pt-1">_________________________</div>
+            </div>
+          </div>
+
+          <p className="mt-6 text-center text-xs text-muted-foreground">تقرير صادر من ZR System — نظام إدارة ورش السيارات</p>
+        </div>
+      </div>
     </div>
   );
 }

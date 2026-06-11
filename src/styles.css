@@ -175,7 +175,12 @@
   box-shadow: var(--shadow-card);
 }
 
+.print-only-container { display: none; }
+
 @media print {
   body { background: white; }
   .no-print { display: none !important; }
+  .print-only-container { display: block !important; }
+  .page-break-avoid { page-break-inside: avoid; }
+  @page { size: A4; margin: 12mm; }
 }
