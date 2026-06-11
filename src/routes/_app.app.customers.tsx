@@ -9,16 +9,47 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Loader2, Search } from "lucide-react";
+import { Plus, Trash2, Loader2, Search, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/app/customers")({
   component: CustomersPage,
 });
 
+type Customer = {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  plate_number: string | null;
+  car_make: string | null;
+  car_model: string | null;
+  car_year: string | null;
+  notes: string | null;
+};
+
+function CustomerForm({ initial, onSubmit, pending }: { initial?: Partial<Customer>; onSubmit: (v: Record<string, string>) => void; pending: boolean }) {
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); onSubmit(Object.fromEntries(f) as any); }} className="space-y-3">
+      <div className="space-y-2"><Label htmlFor="full_name">الاسم</Label><Input id="full_name" name="full_name" required maxLength={120} defaultValue={initial?.full_name ?? ""} /></div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2"><Label htmlFor="phone">الجوال</Label><Input id="phone" name="phone" maxLength={20} dir="ltr" defaultValue={initial?.phone ?? ""} /></div>
+        <div className="space-y-2"><Label htmlFor="plate_number">رقم اللوحة</Label><Input id="plate_number" name="plate_number" maxLength={20} defaultValue={initial?.plate_number ?? ""} /></div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="space-y-2"><Label htmlFor="car_make">الماركة</Label><Input id="car_make" name="car_make" maxLength={50} defaultValue={initial?.car_make ?? ""} /></div>
+        <div className="space-y-2"><Label htmlFor="car_model">الموديل</Label><Input id="car_model" name="car_model" maxLength={50} defaultValue={initial?.car_model ?? ""} /></div>
+        <div className="space-y-2"><Label htmlFor="car_year">السنة</Label><Input id="car_year" name="car_year" maxLength={6} dir="ltr" defaultValue={initial?.car_year ?? ""} /></div>
+      </div>
+      <div className="space-y-2"><Label htmlFor="notes">ملاحظات</Label><Textarea id="notes" name="notes" maxLength={1000} defaultValue={initial?.notes ?? ""} /></div>
+      <DialogFooter><Button type="submit" disabled={pending} className="gradient-primary text-primary-foreground">{pending && <Loader2 className="ms-2 h-4 w-4 animate-spin" />} حفظ</Button></DialogFooter>
+    </form>
+  );
+}
+
 function CustomersPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editRow, setEditRow] = useState<Customer | null>(null);
   const [q, setQ] = useState("");
 
   const { data: rows = [], isLoading } = useQuery({
@@ -40,6 +71,16 @@ function CustomersPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["customers"] }); setOpen(false); toast.success("تم إضافة العميل"); },
     onError: (e: any) => toast.error(e?.message ?? "فشل"),
   });
+
+  const updateMut = useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: Record<string, string> }) => {
+      const { error } = await supabase.from("customers").update(input as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["customers"] }); setEditRow(null); toast.success("تم تحديث العميل"); },
+    onError: (e: any) => toast.error(e?.message ?? "فشل"),
+  });
+
   const delMut = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("customers").delete().eq("id", id); if (error) throw error; },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["customers"] }); toast.success("تم الحذف"); },
@@ -55,20 +96,7 @@ function CustomersPage() {
           <DialogTrigger asChild><Button className="gradient-primary text-primary-foreground"><Plus className="ms-2 h-4 w-4" /> عميل جديد</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>إضافة عميل</DialogTitle></DialogHeader>
-            <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); createMut.mutate(Object.fromEntries(f) as any); }} className="space-y-3">
-              <div className="space-y-2"><Label htmlFor="full_name">الاسم</Label><Input id="full_name" name="full_name" required maxLength={120} /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2"><Label htmlFor="phone">الجوال</Label><Input id="phone" name="phone" maxLength={20} dir="ltr" /></div>
-                <div className="space-y-2"><Label htmlFor="plate_number">رقم اللوحة</Label><Input id="plate_number" name="plate_number" maxLength={20} /></div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-2"><Label htmlFor="car_make">الماركة</Label><Input id="car_make" name="car_make" maxLength={50} /></div>
-                <div className="space-y-2"><Label htmlFor="car_model">الموديل</Label><Input id="car_model" name="car_model" maxLength={50} /></div>
-                <div className="space-y-2"><Label htmlFor="car_year">السنة</Label><Input id="car_year" name="car_year" maxLength={6} dir="ltr" /></div>
-              </div>
-              <div className="space-y-2"><Label htmlFor="notes">ملاحظات</Label><Textarea id="notes" name="notes" maxLength={1000} /></div>
-              <DialogFooter><Button type="submit" disabled={createMut.isPending} className="gradient-primary text-primary-foreground">{createMut.isPending && <Loader2 className="ms-2 h-4 w-4 animate-spin" />} حفظ</Button></DialogFooter>
-            </form>
+            <CustomerForm onSubmit={(v) => createMut.mutate(v)} pending={createMut.isPending} />
           </DialogContent>
         </Dialog>
       </div>
@@ -98,7 +126,10 @@ function CustomersPage() {
                     <TableCell>{[r.car_make, r.car_model, r.car_year].filter(Boolean).join(" ") || "—"}</TableCell>
                     <TableCell className="font-mono text-xs">{r.plate_number || "—"}</TableCell>
                     <TableCell className="text-end">
-                      <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف العميل؟")) delMut.mutate(r.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => setEditRow(r)} title="تعديل"><Pencil className="h-4 w-4 text-primary" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف العميل؟")) delMut.mutate(r.id); }} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -107,6 +138,13 @@ function CustomersPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editRow} onOpenChange={(o) => !o && setEditRow(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>تعديل بيانات العميل</DialogTitle></DialogHeader>
+          {editRow && <CustomerForm initial={editRow} onSubmit={(v) => updateMut.mutate({ id: editRow.id, input: v })} pending={updateMut.isPending} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
