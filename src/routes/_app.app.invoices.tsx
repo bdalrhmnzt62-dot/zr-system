@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Loader2, Printer, ArrowLeft, FileText } from "lucide-react";
+import { Plus, Trash2, Loader2, Printer, ArrowLeft, FileText, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 
@@ -24,7 +24,9 @@ const STATUS_LABEL: Record<string, string> = { draft: "مسودة", issued: "ص�
 function InvoicesPage() {
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
+  const [editRow, setEditRow] = useState<any | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["invoices"],
@@ -58,6 +60,18 @@ function InvoicesPage() {
   const delMut = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("invoices").delete().eq("id", id); if (error) throw error; },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices"] }); toast.success("تم الحذف"); },
+  });
+
+  const updateMut = useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: any }) => {
+      const { error } = await supabase.from("invoices").update({
+        customer_id: input.customer_id || null,
+        notes: input.notes || null,
+      } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices"] }); setEditRow(null); toast.success("تم التحديث"); },
+    onError: (e: any) => toast.error(e?.message),
   });
 
   if (activeId) return <InvoiceDetail id={activeId} onBack={() => setActiveId(null)} />;
@@ -102,7 +116,10 @@ function InvoicesPage() {
                     <TableCell className="font-mono text-sm" dir="ltr">{Number(i.total || 0).toLocaleString("en-US")}</TableCell>
                     <TableCell className="font-mono text-xs">{i.issued_date}</TableCell>
                     <TableCell className="text-end">
-                      <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); if (confirm("حذف؟")) delMut.mutate(i.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditRow(i); }} title="تعديل"><Pencil className="h-4 w-4 text-primary" /></Button>
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); if (confirm("حذف؟")) delMut.mutate(i.id); }} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -111,6 +128,26 @@ function InvoicesPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editRow} onOpenChange={(o) => !o && setEditRow(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>تعديل الفاتورة {editRow?.invoice_number}</DialogTitle></DialogHeader>
+          {editRow && (
+            <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); updateMut.mutate({ id: editRow.id, input: Object.fromEntries(f) }); }} className="space-y-3">
+              <div className="space-y-2">
+                <Label>العميل</Label>
+                <Select name="customer_id" defaultValue={editRow.customer_id ?? undefined}>
+                  <SelectTrigger><SelectValue placeholder="اختر عميل (اختياري)" /></SelectTrigger>
+                  <SelectContent>{customers.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2"><Label htmlFor="notes_edit">ملاحظات</Label><Textarea id="notes_edit" name="notes" maxLength={1000} defaultValue={editRow.notes ?? ""} /></div>
+              <p className="text-xs text-muted-foreground">لتعديل بنود الفاتورة، افتح الفاتورة بالضغط على الصف.</p>
+              <DialogFooter><Button type="submit" disabled={updateMut.isPending} className="gradient-primary text-primary-foreground">{updateMut.isPending && <Loader2 className="ms-2 h-4 w-4 animate-spin" />} حفظ</Button></DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
