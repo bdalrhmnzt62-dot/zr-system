@@ -26,7 +26,8 @@ function InvoicesPage() {
   const [openNew, setOpenNew] = useState(false);
   const [editRow, setEditRow] = useState<any | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-
+  const [selCustomer, setSelCustomer] = useState<string>("");
+  const [selWorkOrder, setSelWorkOrder] = useState<string>("");
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["invoices"],
@@ -42,18 +43,58 @@ function InvoicesPage() {
     queryFn: async () => { const { data } = await supabase.from("customers").select("id, full_name").order("full_name"); return data ?? []; },
   });
 
+  // Completed work orders for the selected customer (used to auto-fill invoice items)
+  const { data: completedWOs = [] } = useQuery({
+    queryKey: ["completed-wos", selCustomer],
+    enabled: !!selCustomer,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("work_orders")
+        .select("id, title, description, total_amount, status")
+        .eq("customer_id", selCustomer)
+        .eq("status", "completed")
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const createMut = useMutation({
     mutationFn: async (input: any) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("غير مسجل");
       const invoice_number = "INV-" + Date.now().toString().slice(-8);
-      const { data, error } = await supabase.from("invoices").insert({
-        owner_id: user.id, customer_id: input.customer_id || null, invoice_number, notes: input.notes || null,
+      const { data: inv, error } = await supabase.from("invoices").insert({
+        owner_id: user.id,
+        customer_id: input.customer_id || null,
+        work_order_id: input.work_order_id || null,
+        invoice_number,
+        notes: input.notes || null,
       } as any).select().single();
       if (error) throw error;
-      return data;
+
+      // If a work order was selected, auto-add it as a line item
+      if (input.work_order_id) {
+        const wo = completedWOs.find((w: any) => w.id === input.work_order_id);
+        if (wo) {
+          const description = wo.description ? `${wo.title} — ${wo.description}` : wo.title;
+          const unit_price = Number(wo.total_amount || 0);
+          await supabase.from("invoice_items").insert({
+            invoice_id: inv.id, owner_id: user.id,
+            description, quantity: 1, unit_price, amount: unit_price,
+          });
+          await supabase.from("invoices").update({
+            subtotal: unit_price, total: unit_price,
+          } as any).eq("id", inv.id);
+        }
+      }
+      return inv;
     },
-    onSuccess: (inv) => { qc.invalidateQueries({ queryKey: ["invoices"] }); setOpenNew(false); setActiveId(inv.id); toast.success("تم إنشاء الفاتورة"); },
+    onSuccess: (inv) => {
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      setOpenNew(false); setSelCustomer(""); setSelWorkOrder("");
+      setActiveId(inv.id); toast.success("تم إنشاء الفاتورة");
+    },
     onError: (e: any) => toast.error(e?.message),
   });
 
@@ -80,18 +121,45 @@ function InvoicesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h2 className="text-2xl font-extrabold">الفواتير</h2><p className="text-sm text-muted-foreground">إنشاء وطباعة الفواتير</p></div>
-        <Dialog open={openNew} onOpenChange={setOpenNew}>
+        <Dialog open={openNew} onOpenChange={(o) => { setOpenNew(o); if (!o) { setSelCustomer(""); setSelWorkOrder(""); } }}>
           <DialogTrigger asChild><Button className="gradient-primary text-primary-foreground"><Plus className="ms-2 h-4 w-4" /> فاتورة جديدة</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>فاتورة جديدة</DialogTitle></DialogHeader>
-            <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); createMut.mutate(Object.fromEntries(f)); }} className="space-y-3">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                createMut.mutate({
+                  customer_id: selCustomer,
+                  work_order_id: selWorkOrder,
+                  notes: f.get("notes"),
+                });
+              }}
+              className="space-y-3"
+            >
               <div className="space-y-2">
                 <Label>العميل</Label>
-                <Select name="customer_id">
+                <Select value={selCustomer} onValueChange={(v) => { setSelCustomer(v); setSelWorkOrder(""); }}>
                   <SelectTrigger><SelectValue placeholder="اختر عميل (اختياري)" /></SelectTrigger>
                   <SelectContent>{customers.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+              {selCustomer && (
+                <div className="space-y-2">
+                  <Label>أمر شغل مكتمل (اختياري)</Label>
+                  <Select value={selWorkOrder} onValueChange={setSelWorkOrder}>
+                    <SelectTrigger><SelectValue placeholder={completedWOs.length ? "اختر أمر شغل" : "لا توجد أوامر شغل مكتملة"} /></SelectTrigger>
+                    <SelectContent>
+                      {completedWOs.map((w: any) => (
+                        <SelectItem key={w.id} value={w.id}>
+                          {w.title} — {Number(w.total_amount || 0).toLocaleString("en-US")} ج.م
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selWorkOrder && <p className="text-xs text-muted-foreground">سيتم إضافة بنود أمر الشغل تلقائيًا وحساب الإجمالي.</p>}
+                </div>
+              )}
               <div className="space-y-2"><Label htmlFor="notes">ملاحظات</Label><Textarea id="notes" name="notes" maxLength={1000} /></div>
               <DialogFooter><Button type="submit" disabled={createMut.isPending} className="gradient-primary text-primary-foreground">{createMut.isPending && <Loader2 className="ms-2 h-4 w-4 animate-spin" />} إنشاء وفتح</Button></DialogFooter>
             </form>
@@ -142,7 +210,7 @@ function InvoicesPage() {
                 </Select>
               </div>
               <div className="space-y-2"><Label htmlFor="notes_edit">ملاحظات</Label><Textarea id="notes_edit" name="notes" maxLength={1000} defaultValue={editRow.notes ?? ""} /></div>
-              <p className="text-xs text-muted-foreground">لتعديل بنود الفاتورة، افتح الفاتورة بالضغط على الصف.</p>
+              <p className="text-xs text-muted-foreground">لتعديل بنود الفاتورة أو الخصم، افتح الفاتورة بالضغط على الصف.</p>
               <DialogFooter><Button type="submit" disabled={updateMut.isPending} className="gradient-primary text-primary-foreground">{updateMut.isPending && <Loader2 className="ms-2 h-4 w-4 animate-spin" />} حفظ</Button></DialogFooter>
             </form>
           )}
@@ -173,10 +241,16 @@ function InvoiceDetail({ id, onBack }: { id: string; onBack: () => void }) {
     queryFn: async () => { const { data: { user } } = await supabase.auth.getUser(); if (!user) return null; const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single(); return data; },
   });
 
-  const recalc = async (invId: string) => {
+  const recalc = async (invId: string, discount?: number) => {
     const { data: rows } = await supabase.from("invoice_items").select("amount").eq("invoice_id", invId);
     const subtotal = (rows ?? []).reduce((s, r) => s + Number(r.amount || 0), 0);
-    await supabase.from("invoices").update({ subtotal, total: subtotal } as any).eq("id", invId);
+    let disc = discount;
+    if (disc === undefined) {
+      const { data: inv } = await supabase.from("invoices").select("discount").eq("id", invId).single();
+      disc = Number((inv as any)?.discount || 0);
+    }
+    const total = Math.max(0, subtotal - Number(disc || 0));
+    await supabase.from("invoices").update({ subtotal, total } as any).eq("id", invId);
   };
 
   const addItem = useMutation({
@@ -201,7 +275,20 @@ function InvoiceDetail({ id, onBack }: { id: string; onBack: () => void }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["invoice", id] }),
   });
 
+  const updateDiscount = useMutation({
+    mutationFn: async (discount: number) => {
+      const { error } = await supabase.from("invoices").update({ discount } as any).eq("id", id);
+      if (error) throw error;
+      await recalc(id, discount);
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoice", id] }); qc.invalidateQueries({ queryKey: ["invoices"] }); },
+  });
+
   if (!invoice) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+
+  const subtotal = Number(invoice.subtotal || 0);
+  const discount = Number((invoice as any).discount || 0);
+  const total = Number(invoice.total || 0);
 
   return (
     <div className="space-y-4">
@@ -216,7 +303,6 @@ function InvoiceDetail({ id, onBack }: { id: string; onBack: () => void }) {
         </div>
       </div>
 
-      {/* Printable invoice */}
       <div ref={printRef} className="rounded-2xl border bg-card p-8 shadow-card print:border-0 print:shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b pb-6">
           <div>
@@ -288,13 +374,37 @@ function InvoiceDetail({ id, onBack }: { id: string; onBack: () => void }) {
         </form>
 
         <div className="mt-6 flex justify-end">
-          <div className="min-w-[240px] space-y-1.5 rounded-xl border bg-secondary/30 p-4">
-            <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">الإجمالي الفرعي</span><span className="font-mono font-bold" dir="ltr">{Number(invoice.subtotal || 0).toLocaleString("en-US")} ج.م</span></div>
-            <div className="flex items-center justify-between border-t pt-2 text-base"><span className="font-bold">المجموع</span><span className="font-mono text-xl font-extrabold text-primary" dir="ltr">{Number(invoice.total || 0).toLocaleString("en-US")} ج.م</span></div>
+          <div className="min-w-[260px] space-y-2 rounded-xl border bg-secondary/30 p-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">الإجمالي الفرعي</span>
+              <span className="font-mono font-bold" dir="ltr">{subtotal.toLocaleString("en-US")} ج.م</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-sm no-print">
+              <span className="text-muted-foreground">الخصم</span>
+              <Input
+                type="number" min="0" step="0.01" dir="ltr"
+                defaultValue={discount}
+                className="h-8 w-28 text-end"
+                onBlur={(e) => {
+                  const v = Math.max(0, Number(e.target.value || 0));
+                  if (v !== discount) updateDiscount.mutate(v);
+                }}
+              />
+            </div>
+            {discount > 0 && (
+              <div className="hidden items-center justify-between text-sm print:flex">
+                <span className="text-muted-foreground">الخصم</span>
+                <span className="font-mono font-bold text-destructive" dir="ltr">- {discount.toLocaleString("en-US")} ج.م</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between border-t pt-2 text-base">
+              <span className="font-bold">صافي الفاتورة</span>
+              <span className="font-mono text-xl font-extrabold text-primary" dir="ltr">{total.toLocaleString("en-US")} ج.م</span>
+            </div>
           </div>
         </div>
 
-        {invoice.notes && (
+        {invoice.notes && invoice.notes.trim() !== "" && (
           <div className="mt-6 border-t pt-4 text-sm text-muted-foreground">
             <p className="mb-1 font-bold text-foreground">ملاحظات:</p>
             <p>{invoice.notes}</p>
