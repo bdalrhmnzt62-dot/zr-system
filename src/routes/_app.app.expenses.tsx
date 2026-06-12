@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/app/expenses")({
@@ -19,6 +19,7 @@ export const Route = createFileRoute("/_app/app/expenses")({
 function ExpensesPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editRow, setEditRow] = useState<any | null>(null);
 
   const { data: rows = [] } = useQuery({
     queryKey: ["expenses"],
@@ -36,6 +37,21 @@ function ExpensesPage() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["expenses"] }); setOpen(false); toast.success("تمت الإضافة"); },
+    onError: (e: any) => toast.error(e?.message),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: any }) => {
+      const { error } = await supabase.from("expenses").update({
+        title: input.title,
+        category: input.category || null,
+        amount: Number(input.amount || 0),
+        expense_date: input.expense_date,
+        notes: input.notes || null,
+      }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["expenses"] }); setEditRow(null); toast.success("تم التحديث"); },
     onError: (e: any) => toast.error(e?.message),
   });
 
@@ -79,7 +95,7 @@ function ExpensesPage() {
           {rows.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">لا توجد مصروفات.</p> : (
             <Table>
               <TableHeader><TableRow>
-                <TableHead>العنوان</TableHead><TableHead>التصنيف</TableHead><TableHead>المبلغ</TableHead><TableHead>التاريخ</TableHead><TableHead className="text-end">حذف</TableHead>
+                <TableHead>العنوان</TableHead><TableHead>التصنيف</TableHead><TableHead>المبلغ</TableHead><TableHead>التاريخ</TableHead><TableHead className="text-end">إجراءات</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {rows.map((r: any) => (
@@ -88,7 +104,12 @@ function ExpensesPage() {
                     <TableCell>{r.category || "—"}</TableCell>
                     <TableCell className="font-mono font-bold" dir="ltr">{Number(r.amount).toLocaleString("en-US")}</TableCell>
                     <TableCell className="font-mono text-xs">{r.expense_date}</TableCell>
-                    <TableCell className="text-end"><Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف؟")) delMut.mutate(r.id); }}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                    <TableCell className="text-end">
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => setEditRow(r)} title="تعديل"><Pencil className="h-4 w-4 text-primary" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف؟")) delMut.mutate(r.id); }} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -96,6 +117,24 @@ function ExpensesPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editRow} onOpenChange={(o) => !o && setEditRow(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>تعديل المصروف</DialogTitle></DialogHeader>
+          {editRow && (
+            <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); updateMut.mutate({ id: editRow.id, input: Object.fromEntries(f) }); }} className="space-y-3">
+              <div className="space-y-2"><Label htmlFor="title_e">العنوان</Label><Input id="title_e" name="title" required maxLength={200} defaultValue={editRow.title} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><Label htmlFor="category_e">التصنيف</Label><Input id="category_e" name="category" maxLength={50} defaultValue={editRow.category ?? ""} /></div>
+                <div className="space-y-2"><Label htmlFor="amount_e">المبلغ (ج.م)</Label><Input id="amount_e" name="amount" type="number" min="0" step="0.01" required defaultValue={editRow.amount} dir="ltr" /></div>
+              </div>
+              <div className="space-y-2"><Label htmlFor="expense_date_e">التاريخ</Label><Input id="expense_date_e" name="expense_date" type="date" required defaultValue={editRow.expense_date} dir="ltr" /></div>
+              <div className="space-y-2"><Label htmlFor="notes_e">ملاحظات</Label><Textarea id="notes_e" name="notes" maxLength={1000} defaultValue={editRow.notes ?? ""} /></div>
+              <DialogFooter><Button type="submit" disabled={updateMut.isPending} className="gradient-primary text-primary-foreground">{updateMut.isPending && <Loader2 className="ms-2 h-4 w-4 animate-spin" />} حفظ</Button></DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
