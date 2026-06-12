@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, type NavItem } from "@/components/AppShell";
-import { checkLicense } from "@/lib/license.functions";
+import { validateCachedLicense, clearCachedLicense } from "@/lib/device-id";
+import { toast } from "sonner";
 import { LayoutDashboard, Users, Wrench, ClipboardList, FileText, Package, Receipt, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/_app")({
@@ -24,10 +25,18 @@ function ClientAppLayout() {
       items={items}
       title="ZR System"
       guard={async () => {
-        try {
-          const lic = await checkLicense();
-          return !!lic;
-        } catch { return false; }
+        // Offline-first: rely solely on the locally cached license.
+        // No server check after activation — the system works fully offline.
+        const res = validateCachedLicense();
+        if (res.ok) return true;
+        if (res.reason === "tampered") {
+          clearCachedLicense();
+          toast.error("تم اكتشاف تلاعب في تاريخ الجهاز — يرجى إعادة التفعيل");
+        } else if (res.reason === "expired") {
+          clearCachedLicense();
+          toast.error("انتهت صلاحية الاشتراك");
+        }
+        return false;
       }}
       redirectIfGuardFails="/activate"
     />

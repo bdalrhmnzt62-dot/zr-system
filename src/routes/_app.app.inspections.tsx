@@ -304,7 +304,7 @@ function InspectionDetail({ id, onBack }: { id: string; onBack: () => void }) {
                           <td className="py-2 align-top">
                             <span className={`inline-block rounded border px-2 py-0.5 text-xs font-bold ${STATUS_COLOR[it.status]}`}>{STATUS_LABEL[it.status]}</span>
                           </td>
-                          <td className="py-2 align-top text-xs text-muted-foreground">{it.notes || "—"}</td>
+                          <td className="py-2 align-top text-xs text-muted-foreground">{it.notes ? it.notes : ""}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -314,7 +314,7 @@ function InspectionDetail({ id, onBack }: { id: string; onBack: () => void }) {
             })}
           </div>
 
-          {inspection?.notes && (
+          {inspection?.notes && inspection.notes.trim() !== "" && (
             <div className="mt-4 border-t pt-4 text-sm">
               <p className="mb-1 font-bold">ملاحظات عامة:</p>
               <p className="text-muted-foreground">{inspection.notes}</p>
@@ -323,7 +323,7 @@ function InspectionDetail({ id, onBack }: { id: string; onBack: () => void }) {
 
           <div className="mt-10 grid grid-cols-2 gap-8 border-t pt-6 text-xs">
             <div>
-              <p className="mb-8 text-muted-foreground">توقيع الفني</p>
+              <p className="mb-8 text-muted-foreground">توقيع المهندس</p>
               <div className="border-t pt-1">_________________________</div>
             </div>
             <div className="text-end">

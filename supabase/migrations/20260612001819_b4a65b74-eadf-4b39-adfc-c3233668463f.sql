@@ -1,0 +1,1 @@
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS discount numeric(12,2) NOT NULL DEFAULT 0;
