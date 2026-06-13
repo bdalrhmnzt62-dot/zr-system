@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { listLicenses, createLicense, updateLicense, deleteLicense } from "@/lib/admin.functions";
+import { listLicenses, createLicense, updateLicense, deleteLicense, renewLicense } from "@/lib/admin.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Ban, CheckCircle2, Copy, Loader2 } from "lucide-react";
+import { Plus, Trash2, Ban, CheckCircle2, Copy, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_admin/admin/licenses")({
@@ -35,9 +35,12 @@ function LicensesPage() {
   const create = useServerFn(createLicense);
   const update = useServerFn(updateLicense);
   const remove = useServerFn(deleteLicense);
+  const renew = useServerFn(renewLicense);
 
   const { data: licenses = [], isLoading } = useQuery({ queryKey: ["licenses"], queryFn: () => list() });
   const [open, setOpen] = useState(false);
+  const [renewRow, setRenewRow] = useState<any | null>(null);
+  const [renewMode, setRenewMode] = useState<"days" | "date">("days");
 
   const createMut = useMutation({
     mutationFn: (input: { client_name: string; duration_days: number; notes?: string }) => create({ data: input }),
@@ -53,6 +56,11 @@ function LicensesPage() {
     mutationFn: (id: string) => remove({ data: { id } }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["licenses"] }); toast.success("تم الحذف"); },
     onError: (e: any) => toast.error(e?.message ?? "فشل الحذف"),
+  });
+  const renewMut = useMutation({
+    mutationFn: (input: { id: string; add_days?: number; expires_at?: string }) => renew({ data: input }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["licenses"] }); setRenewRow(null); toast.success("تم تجديد الاشتراك بنفس الكود"); },
+    onError: (e: any) => toast.error(e?.message ?? "فشل التجديد"),
   });
 
   return (
@@ -134,6 +142,7 @@ function LicensesPage() {
                     <TableCell className="font-mono text-xs">{fmtDate(l.expires_at)}</TableCell>
                     <TableCell className="text-end">
                       <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => setRenewRow(l)} title="تجديد"><RefreshCw className="h-4 w-4 text-primary" /></Button>
                         {l.status !== "revoked" && (
                           <Button size="sm" variant="ghost" onClick={() => updateMut.mutate({ id: l.id, status: "revoked" })}>
                             <Ban className="h-4 w-4" />
@@ -156,6 +165,22 @@ function LicensesPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!renewRow} onOpenChange={(value) => !value && setRenewRow(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>تجديد الكود</DialogTitle><DialogDescription>سيبقى الكود والجهاز والبيانات كما هي، وسيتم تحديث تاريخ الانتهاء فقط.</DialogDescription></DialogHeader>
+          {renewRow && <form className="space-y-4" onSubmit={(event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            if (renewMode === "days") renewMut.mutate({ id: renewRow.id, add_days: Number(form.get("days") || 30) });
+            else renewMut.mutate({ id: renewRow.id, expires_at: new Date(`${String(form.get("date"))}T23:59:59.999Z`).toISOString() });
+          }}>
+            <div className="grid grid-cols-2 gap-2"><Button type="button" variant={renewMode === "days" ? "default" : "outline"} onClick={() => setRenewMode("days")}>إضافة أيام</Button><Button type="button" variant={renewMode === "date" ? "default" : "outline"} onClick={() => setRenewMode("date")}>تاريخ محدد</Button></div>
+            {renewMode === "days" ? <div className="space-y-2"><Label htmlFor="renew-days">عدد الأيام</Label><Input id="renew-days" name="days" type="number" min={1} max={3650} defaultValue={30} required /></div> : <div className="space-y-2"><Label htmlFor="renew-date">تاريخ الانتهاء الجديد</Label><Input id="renew-date" name="date" type="date" min={new Date().toISOString().slice(0, 10)} required /></div>}
+            <DialogFooter><Button type="submit" disabled={renewMut.isPending}>{renewMut.isPending && <Loader2 className="ms-2 h-4 w-4 animate-spin" />}تجديد</Button></DialogFooter>
+          </form>}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
