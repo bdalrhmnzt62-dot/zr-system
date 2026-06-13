@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/app/inventory")({
   component: InventoryPage,
@@ -20,8 +22,9 @@ function ItemForm({ initial, onSubmit, pending }: { initial?: any; onSubmit: (v:
     <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); onSubmit(Object.fromEntries(f)); }} className="space-y-3">
       <div className="space-y-2"><Label htmlFor="name">الاسم</Label><Input id="name" name="name" required maxLength={120} defaultValue={initial?.name ?? ""} /></div>
       <div className="space-y-2"><Label htmlFor="sku">الكود (SKU)</Label><Input id="sku" name="sku" maxLength={50} dir="ltr" defaultValue={initial?.sku ?? ""} /></div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="space-y-2"><Label htmlFor="quantity">الكمية</Label><Input id="quantity" name="quantity" type="number" min="0" step="0.01" defaultValue={initial?.quantity ?? "0"} dir="ltr" /></div>
+        <div className="space-y-2"><Label htmlFor="min_quantity">حد التنبيه</Label><Input id="min_quantity" name="min_quantity" type="number" min="0" step="0.01" defaultValue={initial?.min_quantity ?? "0"} dir="ltr" /></div>
         <div className="space-y-2"><Label htmlFor="unit_cost">سعر التكلفة</Label><Input id="unit_cost" name="unit_cost" type="number" min="0" step="0.01" defaultValue={initial?.unit_cost ?? "0"} dir="ltr" /></div>
         <div className="space-y-2"><Label htmlFor="unit_price">سعر البيع</Label><Input id="unit_price" name="unit_price" type="number" min="0" step="0.01" defaultValue={initial?.unit_price ?? "0"} dir="ltr" /></div>
       </div>
@@ -46,7 +49,7 @@ function InventoryPage() {
       if (!user) throw new Error("غير مسجل");
       const { error } = await supabase.from("inventory_items").insert({
         owner_id: user.id, name: input.name, sku: input.sku || null,
-        quantity: Number(input.quantity || 0), unit_cost: Number(input.unit_cost || 0), unit_price: Number(input.unit_price || 0),
+        quantity: Number(input.quantity || 0), min_quantity: Number(input.min_quantity || 0), unit_cost: Number(input.unit_cost || 0), unit_price: Number(input.unit_price || 0),
       });
       if (error) throw error;
     },
@@ -58,7 +61,7 @@ function InventoryPage() {
     mutationFn: async ({ id, input }: { id: string; input: any }) => {
       const { error } = await supabase.from("inventory_items").update({
         name: input.name, sku: input.sku || null,
-        quantity: Number(input.quantity || 0), unit_cost: Number(input.unit_cost || 0), unit_price: Number(input.unit_price || 0),
+        quantity: Number(input.quantity || 0), min_quantity: Number(input.min_quantity || 0), unit_cost: Number(input.unit_cost || 0), unit_price: Number(input.unit_price || 0),
       } as any).eq("id", id);
       if (error) throw error;
     },
@@ -72,6 +75,7 @@ function InventoryPage() {
   });
 
   const totalValue = rows.reduce((s: number, r: any) => s + Number(r.quantity) * Number(r.unit_cost || 0), 0);
+  const lowStockCount = rows.filter((r: any) => Number(r.quantity) <= Number(r.min_quantity) && Number(r.min_quantity) > 0).length;
 
   return (
     <div className="space-y-6">
@@ -87,7 +91,7 @@ function InventoryPage() {
       </div>
 
       <Card className="shadow-card">
-        <CardContent className="p-5"><p className="text-xs text-muted-foreground">إجمالي قيمة المخزون (التكلفة)</p><p className="text-2xl font-extrabold" dir="ltr">{totalValue.toLocaleString("en-US")} ج.م</p></CardContent>
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="text-xs text-muted-foreground">إجمالي قيمة المخزون (التكلفة)</p><p className="text-2xl font-extrabold" dir="ltr">{totalValue.toLocaleString("en-US")} ج.م</p></div>{lowStockCount > 0 && <Badge variant="destructive">{lowStockCount} أصناف تحتاج إعادة تخزين</Badge>}</CardContent>
       </Card>
 
       <Card>
@@ -96,14 +100,16 @@ function InventoryPage() {
           {rows.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">لا توجد أصناف.</p> : (
             <Table>
               <TableHeader><TableRow>
-                <TableHead>الاسم</TableHead><TableHead>الكود</TableHead><TableHead>الكمية</TableHead><TableHead>التكلفة</TableHead><TableHead>البيع</TableHead><TableHead className="text-end">إجراءات</TableHead>
+                <TableHead>الاسم</TableHead><TableHead>الكود</TableHead><TableHead>الكمية</TableHead><TableHead>الحد الأدنى</TableHead><TableHead>التكلفة</TableHead><TableHead>البيع</TableHead><TableHead className="text-end">إجراءات</TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {rows.map((r: any) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.name}</TableCell>
+                {rows.map((r: any) => {
+                  const lowStock = Number(r.quantity) <= Number(r.min_quantity) && Number(r.min_quantity) > 0;
+                  return <TableRow key={r.id} className={cn(lowStock && "bg-destructive/10 hover:bg-destructive/15")}>
+                    <TableCell className="font-medium"><div className="flex items-center gap-2">{r.name}{lowStock && <Badge variant="destructive">مخزون منخفض</Badge>}</div></TableCell>
                     <TableCell className="font-mono text-xs">{r.sku || "—"}</TableCell>
                     <TableCell className="font-mono" dir="ltr">{Number(r.quantity)}</TableCell>
+                    <TableCell className="font-mono" dir="ltr">{Number(r.min_quantity)}</TableCell>
                     <TableCell className="font-mono" dir="ltr">{Number(r.unit_cost).toLocaleString("en-US")}</TableCell>
                     <TableCell className="font-mono" dir="ltr">{Number(r.unit_price).toLocaleString("en-US")}</TableCell>
                     <TableCell className="text-end">
@@ -112,8 +118,8 @@ function InventoryPage() {
                         <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف؟")) delMut.mutate(r.id); }} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
                       </div>
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>;
+                })}
               </TableBody>
             </Table>
           )}
