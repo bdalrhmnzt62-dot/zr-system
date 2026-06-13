@@ -23,6 +23,7 @@ import { Route as AppAppInspectionsRouteImport } from './routes/_app.app.inspect
 import { Route as AppAppExpensesRouteImport } from './routes/_app.app.expenses'
 import { Route as AppAppDashboardRouteImport } from './routes/_app.app.dashboard'
 import { Route as AppAppCustomersRouteImport } from './routes/_app.app.customers'
+import { Route as AdminAdminSettingsRouteImport } from './routes/_admin.admin.settings'
 import { Route as AdminAdminLicensesRouteImport } from './routes/_admin.admin.licenses'
 import { Route as AdminAdminDashboardRouteImport } from './routes/_admin.admin.dashboard'
 import { Route as AdminAdminCustomersRouteImport } from './routes/_admin.admin.customers'
@@ -95,6 +96,11 @@ const AppAppCustomersRoute = AppAppCustomersRouteImport.update({
   path: '/app/customers',
   getParentRoute: () => AppRoute,
 } as any)
+const AdminAdminSettingsRoute = AdminAdminSettingsRouteImport.update({
+  id: '/admin/settings',
+  path: '/admin/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAdminLicensesRoute = AdminAdminLicensesRouteImport.update({
   id: '/admin/licenses',
   path: '/admin/licenses',
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/admin/customers': typeof AdminAdminCustomersRoute
   '/admin/dashboard': typeof AdminAdminDashboardRoute
   '/admin/licenses': typeof AdminAdminLicensesRoute
+  '/admin/settings': typeof AdminAdminSettingsRoute
   '/app/customers': typeof AppAppCustomersRoute
   '/app/dashboard': typeof AppAppDashboardRoute
   '/app/expenses': typeof AppAppExpensesRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/admin/customers': typeof AdminAdminCustomersRoute
   '/admin/dashboard': typeof AdminAdminDashboardRoute
   '/admin/licenses': typeof AdminAdminLicensesRoute
+  '/admin/settings': typeof AdminAdminSettingsRoute
   '/app/customers': typeof AppAppCustomersRoute
   '/app/dashboard': typeof AppAppDashboardRoute
   '/app/expenses': typeof AppAppExpensesRoute
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/_admin/admin/customers': typeof AdminAdminCustomersRoute
   '/_admin/admin/dashboard': typeof AdminAdminDashboardRoute
   '/_admin/admin/licenses': typeof AdminAdminLicensesRoute
+  '/_admin/admin/settings': typeof AdminAdminSettingsRoute
   '/_app/app/customers': typeof AppAppCustomersRoute
   '/_app/app/dashboard': typeof AppAppDashboardRoute
   '/_app/app/expenses': typeof AppAppExpensesRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/dashboard'
     | '/admin/licenses'
+    | '/admin/settings'
     | '/app/customers'
     | '/app/dashboard'
     | '/app/expenses'
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/dashboard'
     | '/admin/licenses'
+    | '/admin/settings'
     | '/app/customers'
     | '/app/dashboard'
     | '/app/expenses'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/_admin/admin/customers'
     | '/_admin/admin/dashboard'
     | '/_admin/admin/licenses'
+    | '/_admin/admin/settings'
     | '/_app/app/customers'
     | '/_app/app/dashboard'
     | '/_app/app/expenses'
@@ -330,6 +342,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAppCustomersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_admin/admin/settings': {
+      id: '/_admin/admin/settings'
+      path: '/admin/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminAdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/admin/licenses': {
       id: '/_admin/admin/licenses'
       path: '/admin/licenses'
@@ -358,12 +377,14 @@ interface AdminRouteChildren {
   AdminAdminCustomersRoute: typeof AdminAdminCustomersRoute
   AdminAdminDashboardRoute: typeof AdminAdminDashboardRoute
   AdminAdminLicensesRoute: typeof AdminAdminLicensesRoute
+  AdminAdminSettingsRoute: typeof AdminAdminSettingsRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminCustomersRoute: AdminAdminCustomersRoute,
   AdminAdminDashboardRoute: AdminAdminDashboardRoute,
   AdminAdminLicensesRoute: AdminAdminLicensesRoute,
+  AdminAdminSettingsRoute: AdminAdminSettingsRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
@@ -403,3 +424,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
