@@ -25,11 +25,16 @@ function SetupPage() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getUser();
-      if (!data.user) { navigate({ to: "/auth" }); return; }
+      if (!data.user) {
+        navigate({ to: "/auth" });
+        return;
+      }
       try {
         const r = await getRole();
         if (r.roles.includes("admin")) navigate({ to: "/admin/dashboard" });
-      } catch { /* noop */ }
+      } catch {
+        /* noop */
+      }
     })();
   }, [navigate, getRole]);
 
@@ -43,7 +48,9 @@ function SetupPage() {
       navigate({ to: "/admin/dashboard" });
     } catch (err: any) {
       toast.error(err?.message ?? "فشلت العملية");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,7 +58,11 @@ function SetupPage() {
       <div className="absolute inset-0 gradient-hero" />
       <div className="relative flex min-h-screen items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
-          <div className="mb-6 flex justify-center"><Link to="/"><Logo /></Link></div>
+          <div className="mb-6 flex justify-center">
+            <Link to="/">
+              <Logo />
+            </Link>
+          </div>
           <Card className="bg-card/95 shadow-elegant backdrop-blur">
             <CardHeader className="text-center">
               <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-xl gradient-primary shadow-elegant">
@@ -64,10 +75,22 @@ function SetupPage() {
               <form onSubmit={onSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="secret">الرمز السري</Label>
-                  <Input id="secret" name="secret" type="password" required placeholder="ZR-BOOTSTRAP-2026" />
-                  <p className="text-xs text-muted-foreground">القيمة الافتراضية: <code className="font-mono">ZR-BOOTSTRAP-2026</code> — غيّرها من إعدادات النظام بعد الإعداد.</p>
+                  <Input
+                    id="secret"
+                    name="secret"
+                    type="password"
+                    required
+                    autoComplete="current-password"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    إعداد المسؤول الأول محمي برمز سري خاص بالنظام ولا يتم عرضه داخل التطبيق.
+                  </p>
                 </div>
-                <Button type="submit" disabled={loading} className="w-full gradient-primary text-primary-foreground">
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full gradient-primary text-primary-foreground"
+                >
                   {loading && <Loader2 className="ms-2 h-4 w-4 animate-spin" />}
                   منحي صلاحيات المسؤول
                 </Button>

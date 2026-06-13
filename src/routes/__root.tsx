@@ -13,6 +13,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { setupPwa } from "@/lib/pwa";
+import { startAutomaticSync } from "@/lib/offline-db";
 
 function NotFoundComponent() {
   return (
@@ -80,23 +82,48 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "ZR System | نظام إدارة ورش السيارات" },
-      { name: "description", content: "نظام احترافي متكامل لإدارة ورش السيارات: عملاء، فواتير، أوامر شغل، كشف فني، مخزن وتحليل أرباح." },
+      {
+        name: "description",
+        content:
+          "نظام احترافي متكامل لإدارة ورش السيارات: عملاء، فواتير، أوامر شغل، كشف فني، مخزن وتحليل أرباح.",
+      },
       { name: "author", content: "ZR System" },
       { property: "og:title", content: "ZR System | نظام إدارة ورش السيارات" },
-      { property: "og:description", content: "نظام احترافي متكامل لإدارة ورش السيارات: عملاء، فواتير، أوامر شغل، كشف فني، مخزن وتحليل أرباح." },
+      {
+        property: "og:description",
+        content:
+          "نظام احترافي متكامل لإدارة ورش السيارات: عملاء، فواتير، أوامر شغل، كشف فني، مخزن وتحليل أرباح.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "ZR System | نظام إدارة ورش السيارات" },
-      { name: "twitter:description", content: "نظام احترافي متكامل لإدارة ورش السيارات: عملاء، فواتير، أوامر شغل، كشف فني، مخزن وتحليل أرباح." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/59WKO69Ov7QokjhtG0OzYWPapgc2/social-images/social-1781227561038-1780967775280.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/59WKO69Ov7QokjhtG0OzYWPapgc2/social-images/social-1781227561038-1780967775280.webp" },
+      {
+        name: "twitter:description",
+        content:
+          "نظام احترافي متكامل لإدارة ورش السيارات: عملاء، فواتير، أوامر شغل، كشف فني، مخزن وتحليل أرباح.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/59WKO69Ov7QokjhtG0OzYWPapgc2/social-images/social-1781227561038-1780967775280.webp",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/59WKO69Ov7QokjhtG0OzYWPapgc2/social-images/social-1781227561038-1780967775280.webp",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", href: "/favicon.ico" },
+      { rel: "apple-touch-icon", href: "/pwa-192.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -124,13 +151,20 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    void setupPwa();
+    const stopSync = startAutomaticSync(() => queryClient.invalidateQueries());
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
         router.invalidate();
         if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
       }
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      stopSync();
+    };
   }, [router, queryClient]);
 
   return (

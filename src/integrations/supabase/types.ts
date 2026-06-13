@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_settings: {
+        Row: {
+          auto_sync: boolean
+          created_at: string
+          currency: string
+          id: string
+          inventory_alerts: boolean
+          system_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_sync?: boolean
+          created_at?: string
+          currency?: string
+          id?: string
+          inventory_alerts?: boolean
+          system_name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_sync?: boolean
+          created_at?: string
+          currency?: string
+          id?: string
+          inventory_alerts?: boolean
+          system_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           car_make: string | null
@@ -185,6 +218,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          min_quantity: number
           name: string
           notes: string | null
           owner_id: string
@@ -197,6 +231,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          min_quantity?: number
           name: string
           notes?: string | null
           owner_id: string
@@ -209,6 +244,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          min_quantity?: number
           name?: string
           notes?: string | null
           owner_id?: string
