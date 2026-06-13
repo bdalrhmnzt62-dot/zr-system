@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Trash2, Loader2, Printer, ArrowLeft, FileText, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
+import { fetchWithOfflineCache, getRememberedOwnerId, offlineDelete, offlineUpsert, rememberOwnerId } from "@/lib/offline-db";
 
 export const Route = createFileRoute("/_app/app/invoices")({
   component: InvoicesPage,
@@ -31,11 +32,11 @@ function InvoicesPage() {
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["invoices"],
-    queryFn: async () => {
+    queryFn: () => fetchWithOfflineCache("invoices", async () => {
       const { data, error } = await supabase.from("invoices").select("*, customers(full_name)").order("created_at", { ascending: false });
       if (error) throw error;
-      return data ?? [];
-    },
+      return (data ?? []) as Record<string, unknown>[];
+    }),
   });
 
   const { data: customers = [] } = useQuery({
@@ -62,16 +63,19 @@ function InvoicesPage() {
   const createMut = useMutation({
     mutationFn: async (input: any) => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("غير مسجل");
+      const ownerId = user?.id ?? await getRememberedOwnerId();
+      if (!ownerId) throw new Error("افتح النظام مرة واحدة بالإنترنت قبل استخدام الحفظ المحلي");
+      if (user) await rememberOwnerId(user.id);
       const invoice_number = "INV-" + Date.now().toString().slice(-8);
-      const { data: inv, error } = await supabase.from("invoices").insert({
-        owner_id: user.id,
+      const inv = await offlineUpsert("invoices", {
+        owner_id: ownerId,
         customer_id: input.customer_id || null,
         work_order_id: input.work_order_id || null,
         invoice_number,
         notes: input.notes || null,
-      } as any).select().single();
-      if (error) throw error;
+        issued_date: new Date().toISOString().slice(0, 10), status: "draft", subtotal: 0, tax: 0, discount: 0, total: 0,
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      });
 
       // If a work order was selected, auto-add it as a line item
       if (input.work_order_id) {
@@ -80,12 +84,12 @@ function InvoicesPage() {
           const description = wo.description ? `${wo.title} — ${wo.description}` : wo.title;
           const unit_price = Number(wo.total_amount || 0);
           await supabase.from("invoice_items").insert({
-            invoice_id: inv.id, owner_id: user.id,
+            invoice_id: String(inv.id), owner_id: ownerId,
             description, quantity: 1, unit_price, amount: unit_price,
           });
           await supabase.from("invoices").update({
             subtotal: unit_price, total: unit_price,
-          } as any).eq("id", inv.id);
+          } as any).eq("id", String(inv.id));
         }
       }
       return inv;
@@ -93,23 +97,23 @@ function InvoicesPage() {
     onSuccess: (inv) => {
       qc.invalidateQueries({ queryKey: ["invoices"] });
       setOpenNew(false); setSelCustomer(""); setSelWorkOrder("");
-      setActiveId(inv.id); toast.success("تم إنشاء الفاتورة");
+       setActiveId(String(inv.id)); toast.success("تم إنشاء الفاتورة");
     },
     onError: (e: any) => toast.error(e?.message),
   });
 
   const delMut = useMutation({
-    mutationFn: async (id: string) => { const { error } = await supabase.from("invoices").delete().eq("id", id); if (error) throw error; },
+    mutationFn: (id: string) => offlineDelete("invoices", id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices"] }); toast.success("تم الحذف"); },
   });
 
   const updateMut = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: any }) => {
-      const { error } = await supabase.from("invoices").update({
+      return offlineUpsert("invoices", {
         customer_id: input.customer_id || null,
         notes: input.notes || null,
-      } as any).eq("id", id);
-      if (error) throw error;
+        updated_at: new Date().toISOString(),
+      }, id);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices"] }); setEditRow(null); toast.success("تم التحديث"); },
     onError: (e: any) => toast.error(e?.message),
