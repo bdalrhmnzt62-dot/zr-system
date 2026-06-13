@@ -119,11 +119,15 @@ export async function syncPendingMutations() {
   const pending = await db.getAllFromIndex("pending", "by-created");
   let synced = 0;
   for (const mutation of pending) {
-    const query = mutation.operation === "delete"
-      ? supabase.from(mutation.table).delete().eq("id", mutation.rowId)
-      : mutation.operation === "update"
-        ? supabase.from(mutation.table).update(mutation.payload as never).eq("id", mutation.rowId)
-        : supabase.from(mutation.table).insert(mutation.payload as never);
+    const query =
+      mutation.operation === "delete"
+        ? supabase.from(mutation.table).delete().eq("id", mutation.rowId)
+        : mutation.operation === "update"
+          ? supabase
+              .from(mutation.table)
+              .update(mutation.payload as never)
+              .eq("id", mutation.rowId)
+          : supabase.from(mutation.table).insert(mutation.payload as never);
     const { error } = await query;
     if (error) break;
     await db.delete("pending", mutation.id);
