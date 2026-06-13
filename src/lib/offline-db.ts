@@ -25,16 +25,17 @@ interface ZrOfflineDb extends DBSchema {
   meta: { key: string; value: { key: string; value: string } };
 }
 
-const dbPromise = typeof window === "undefined"
-  ? null
-  : openDB<ZrOfflineDb>("zr-system-offline", 1, {
-      upgrade(db) {
-        db.createObjectStore("collections", { keyPath: "key" });
-        const pending = db.createObjectStore("pending", { keyPath: "id" });
-        pending.createIndex("by-created", "createdAt");
-        db.createObjectStore("meta", { keyPath: "key" });
-      },
-    });
+const dbPromise =
+  typeof window === "undefined"
+    ? null
+    : openDB<ZrOfflineDb>("zr-system-offline", 1, {
+        upgrade(db) {
+          db.createObjectStore("collections", { keyPath: "key" });
+          const pending = db.createObjectStore("pending", { keyPath: "id" });
+          pending.createIndex("by-created", "createdAt");
+          db.createObjectStore("meta", { keyPath: "key" });
+        },
+      });
 
 const collectionKey = (table: OfflineTable) => `table:${table}`;
 
@@ -58,12 +59,17 @@ export async function readCachedRows(table: OfflineTable) {
   return (await db?.get("collections", collectionKey(table)))?.rows ?? [];
 }
 
-async function patchLocal(table: OfflineTable, rowId: string, payload: Record<string, unknown>, remove = false) {
+async function patchLocal(
+  table: OfflineTable,
+  rowId: string,
+  payload: Record<string, unknown>,
+  remove = false,
+) {
   const rows = await readCachedRows(table);
   const next = remove
     ? rows.filter((row) => row.id !== rowId)
     : rows.some((row) => row.id === rowId)
-      ? rows.map((row) => row.id === rowId ? { ...row, ...payload, sync_status: "pending" } : row)
+      ? rows.map((row) => (row.id === rowId ? { ...row, ...payload, sync_status: "pending" } : row))
       : [{ ...payload, id: rowId, sync_status: "pending" }, ...rows];
   await cacheRows(table, next);
 }
@@ -73,18 +79,36 @@ async function queueMutation(mutation: PendingMutation) {
   if (db) await db.put("pending", mutation);
 }
 
-export async function offlineUpsert(table: OfflineTable, payload: Record<string, unknown>, rowId?: string) {
+export async function offlineUpsert(
+  table: OfflineTable,
+  payload: Record<string, unknown>,
+  rowId?: string,
+) {
   const id = rowId ?? crypto.randomUUID();
   const fullPayload = { ...payload, id };
   await patchLocal(table, id, fullPayload);
-  await queueMutation({ id: crypto.randomUUID(), table, operation: "upsert", rowId: id, payload: fullPayload, createdAt: Date.now() });
+  await queueMutation({
+    id: crypto.randomUUID(),
+    table,
+    operation: "upsert",
+    rowId: id,
+    payload: fullPayload,
+    createdAt: Date.now(),
+  });
   if (navigator.onLine) await syncPendingMutations();
   return fullPayload;
 }
 
 export async function offlineDelete(table: OfflineTable, rowId: string) {
   await patchLocal(table, rowId, {}, true);
-  await queueMutation({ id: crypto.randomUUID(), table, operation: "delete", rowId, payload: {}, createdAt: Date.now() });
+  await queueMutation({
+    id: crypto.randomUUID(),
+    table,
+    operation: "delete",
+    rowId,
+    payload: {},
+    createdAt: Date.now(),
+  });
   if (navigator.onLine) await syncPendingMutations();
 }
 
@@ -95,9 +119,10 @@ export async function syncPendingMutations() {
   const pending = await db.getAllFromIndex("pending", "by-created");
   let synced = 0;
   for (const mutation of pending) {
-    const query = mutation.operation === "delete"
-      ? supabase.from(mutation.table).delete().eq("id", mutation.rowId)
-      : supabase.from(mutation.table).upsert(mutation.payload as never, { onConflict: "id" });
+    const query =
+      mutation.operation === "delete"
+        ? supabase.from(mutation.table).delete().eq("id", mutation.rowId)
+        : supabase.from(mutation.table).upsert(mutation.payload as never, { onConflict: "id" });
     const { error } = await query;
     if (error) break;
     await db.delete("pending", mutation.id);
@@ -125,9 +150,15 @@ export async function fetchWithOfflineCache(
 
 export function startAutomaticSync(onSynced?: () => void) {
   if (typeof window === "undefined") return () => undefined;
-  const sync = () => void syncPendingMutations().then(({ synced }) => { if (synced > 0) onSynced?.(); });
+  const sync = () =>
+    void syncPendingMutations().then(({ synced }) => {
+      if (synced > 0) onSynced?.();
+    });
   window.addEventListener("online", sync);
   const timer = window.setInterval(sync, 30_000);
   sync();
-  return () => { window.removeEventListener("online", sync); window.clearInterval(timer); };
+  return () => {
+    window.removeEventListener("online", sync);
+    window.clearInterval(timer);
+  };
 }

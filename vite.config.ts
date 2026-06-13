@@ -27,9 +27,14 @@ export default defineConfig({
               options: { cacheName: "zr-navigation", networkTimeoutSeconds: 4 },
             },
             {
-              urlPattern: ({ url }) => url.origin === self.location.origin && /\.(?:js|css|woff2?|png|jpg|jpeg|svg|ico)$/.test(url.pathname),
+              urlPattern: ({ url }) =>
+                url.origin === self.location.origin &&
+                /\.(?:js|css|woff2?|png|jpg|jpeg|svg|ico)$/.test(url.pathname),
               handler: "CacheFirst",
-              options: { cacheName: "zr-assets", expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 30 } },
+              options: {
+                cacheName: "zr-assets",
+                expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              },
             },
           ],
         },

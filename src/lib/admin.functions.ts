@@ -85,11 +85,16 @@ export const updateLicense = createServerFn({ method: "POST" })
 
 const DeleteLicenseSchema = z.object({ id: z.string().uuid() });
 
-const RenewLicenseSchema = z.object({
-  id: z.string().uuid(),
-  add_days: z.number().int().min(1).max(3650).optional(),
-  expires_at: z.string().datetime().optional(),
-}).refine((value) => value.add_days !== undefined || value.expires_at !== undefined, "حدد مدة التجديد");
+const RenewLicenseSchema = z
+  .object({
+    id: z.string().uuid(),
+    add_days: z.number().int().min(1).max(3650).optional(),
+    expires_at: z.string().datetime().optional(),
+  })
+  .refine(
+    (value) => value.add_days !== undefined || value.expires_at !== undefined,
+    "حدد مدة التجديد",
+  );
 
 export const renewLicense = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -97,17 +102,38 @@ export const renewLicense = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: current, error: currentError } = await supabaseAdmin.from("license_keys").select("*").eq("id", data.id).single();
+    const { data: current, error: currentError } = await supabaseAdmin
+      .from("license_keys")
+      .select("*")
+      .eq("id", data.id)
+      .single();
     if (currentError || !current) throw new Error("الكود غير موجود");
-    const base = current.expires_at && new Date(current.expires_at).getTime() > Date.now() ? new Date(current.expires_at) : new Date();
-    const expiresAt = data.expires_at ? new Date(data.expires_at) : new Date(base.getTime() + Number(data.add_days) * 86_400_000);
-    if (expiresAt.getTime() <= Date.now()) throw new Error("تاريخ الانتهاء الجديد يجب أن يكون في المستقبل");
+    const base =
+      current.expires_at && new Date(current.expires_at).getTime() > Date.now()
+        ? new Date(current.expires_at)
+        : new Date();
+    const expiresAt = data.expires_at
+      ? new Date(data.expires_at)
+      : new Date(base.getTime() + Number(data.add_days) * 86_400_000);
+    if (expiresAt.getTime() <= Date.now())
+      throw new Error("تاريخ الانتهاء الجديد يجب أن يكون في المستقبل");
     const activatedStatus = current.activated_by ? "active" : "pending";
-    const { data: row, error } = await supabaseAdmin.from("license_keys").update({
-      expires_at: expiresAt.toISOString(),
-      duration_days: Math.max(1, Math.ceil((expiresAt.getTime() - new Date(current.activated_at ?? Date.now()).getTime()) / 86_400_000)),
-      status: activatedStatus,
-    }).eq("id", data.id).select().single();
+    const { data: row, error } = await supabaseAdmin
+      .from("license_keys")
+      .update({
+        expires_at: expiresAt.toISOString(),
+        duration_days: Math.max(
+          1,
+          Math.ceil(
+            (expiresAt.getTime() - new Date(current.activated_at ?? Date.now()).getTime()) /
+              86_400_000,
+          ),
+        ),
+        status: activatedStatus,
+      })
+      .eq("id", data.id)
+      .select()
+      .single();
     if (error) throw new Error(error.message);
     return row;
   });
@@ -136,9 +162,14 @@ export const adminStats = createServerFn({ method: "GET" })
     ]);
 
     const byStatus: Record<string, number> = { pending: 0, active: 0, expired: 0, revoked: 0 };
-    (licenses.data ?? []).forEach((l) => { byStatus[l.status as string] = (byStatus[l.status as string] ?? 0) + 1; });
+    (licenses.data ?? []).forEach((l) => {
+      byStatus[l.status as string] = (byStatus[l.status as string] ?? 0) + 1;
+    });
 
-    const totalRevenue = (invoices.data ?? []).reduce((s: number, r: { total: number | string }) => s + Number(r.total || 0), 0);
+    const totalRevenue = (invoices.data ?? []).reduce(
+      (s: number, r: { total: number | string }) => s + Number(r.total || 0),
+      0,
+    );
 
     return {
       totalLicenses: licenses.count ?? 0,
@@ -189,9 +220,15 @@ export const getAdminSettings = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.from("admin_settings").select("*").eq("user_id", context.userId).maybeSingle();
+    const { data, error } = await supabaseAdmin
+      .from("admin_settings")
+      .select("*")
+      .eq("user_id", context.userId)
+      .maybeSingle();
     if (error) throw new Error(error.message);
-    return data ?? { system_name: "ZR System", currency: "ج.م", auto_sync: true, inventory_alerts: true };
+    return (
+      data ?? { system_name: "ZR System", currency: "ج.م", auto_sync: true, inventory_alerts: true }
+    );
   });
 
 export const saveAdminSettings = createServerFn({ method: "POST" })
@@ -200,7 +237,11 @@ export const saveAdminSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin.from("admin_settings").upsert({ ...data, user_id: context.userId }, { onConflict: "user_id" }).select().single();
+    const { data: row, error } = await supabaseAdmin
+      .from("admin_settings")
+      .upsert({ ...data, user_id: context.userId }, { onConflict: "user_id" })
+      .select()
+      .single();
     if (error) throw new Error(error.message);
     return row;
   });
