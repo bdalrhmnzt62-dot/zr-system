@@ -2,7 +2,7 @@ import { openDB, type DBSchema } from "idb";
 import { supabase } from "@/integrations/supabase/client";
 
 type OfflineTable = "expenses" | "work_orders" | "invoices";
-type SyncOperation = "upsert" | "delete";
+type SyncOperation = "insert" | "update" | "delete";
 
 interface CachedCollection {
   key: string;
@@ -90,7 +90,7 @@ export async function offlineUpsert(
   await queueMutation({
     id: crypto.randomUUID(),
     table,
-    operation: "upsert",
+    operation: rowId ? "update" : "insert",
     rowId: id,
     payload: fullPayload,
     createdAt: Date.now(),
@@ -119,10 +119,11 @@ export async function syncPendingMutations() {
   const pending = await db.getAllFromIndex("pending", "by-created");
   let synced = 0;
   for (const mutation of pending) {
-    const query =
-      mutation.operation === "delete"
-        ? supabase.from(mutation.table).delete().eq("id", mutation.rowId)
-        : supabase.from(mutation.table).upsert(mutation.payload as never, { onConflict: "id" });
+    const query = mutation.operation === "delete"
+      ? supabase.from(mutation.table).delete().eq("id", mutation.rowId)
+      : mutation.operation === "update"
+        ? supabase.from(mutation.table).update(mutation.payload as never).eq("id", mutation.rowId)
+        : supabase.from(mutation.table).insert(mutation.payload as never);
     const { error } = await query;
     if (error) break;
     await db.delete("pending", mutation.id);
