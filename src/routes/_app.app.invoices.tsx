@@ -485,16 +485,14 @@ function InvoiceDetail({ id, onBack }: { id: string; onBack: () => void }) {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("غير مسجل");
       const amount = input.quantity * input.unit_price;
-      const { error } = await supabase
-        .from("invoice_items")
-        .insert({
-          invoice_id: id,
-          owner_id: user.id,
-          description: input.description,
-          quantity: input.quantity,
-          unit_price: input.unit_price,
-          amount,
-        });
+      const { error } = await supabase.from("invoice_items").insert({
+        invoice_id: id,
+        owner_id: user.id,
+        description: input.description,
+        quantity: input.quantity,
+        unit_price: input.unit_price,
+        amount,
+      });
       if (error) throw error;
       await recalc(id);
     },
