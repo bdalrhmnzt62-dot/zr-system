@@ -29,8 +29,12 @@ export function AppShell({ items, title, badge, guard, redirectIfGuardFails }: P
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) { navigate({ to: "/auth" }); return; }
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) { navigate({ to: "/auth" }); return; }
+      if (navigator.onLine) {
+        const { data } = await supabase.auth.getUser();
+        if (!data.user) { navigate({ to: "/auth" }); return; }
+      }
       if (guard) {
         const ok = await guard();
         if (cancelled) return;
