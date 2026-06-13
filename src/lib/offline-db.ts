@@ -130,6 +130,9 @@ export async function syncPendingMutations() {
           : supabase.from(mutation.table).insert(mutation.payload as never);
     const { error } = await query;
     if (error) break;
+    if (mutation.operation !== "delete") {
+      await patchLocal(mutation.table, mutation.rowId, { sync_status: "synced" });
+    }
     await db.delete("pending", mutation.id);
     synced += 1;
   }
@@ -144,8 +147,9 @@ export async function fetchWithOfflineCache(
     try {
       await syncPendingMutations();
       const rows = await onlineFetch();
-      await cacheRows(table, rows);
-      return rows;
+      const syncedRows = rows.map((row) => ({ ...row, sync_status: "synced" }));
+      await cacheRows(table, syncedRows);
+      return syncedRows;
     } catch {
       return readCachedRows(table);
     }

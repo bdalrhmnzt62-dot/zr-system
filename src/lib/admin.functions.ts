@@ -187,7 +187,8 @@ export const promoteSelfAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => PromoteAdminSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const expected = process.env.ADMIN_BOOTSTRAP_SECRET || "ZR-BOOTSTRAP-2026";
+    const expected = process.env.ADMIN_BOOTSTRAP_SECRET;
+    if (!expected) throw new Error("تم إغلاق إعداد المسؤول الأول لأسباب أمنية");
     if (data.secret !== expected) throw new Error("الرمز السري غير صحيح");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin

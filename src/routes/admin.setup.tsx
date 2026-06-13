@@ -64,8 +64,8 @@ function SetupPage() {
               <form onSubmit={onSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="secret">الرمز السري</Label>
-                  <Input id="secret" name="secret" type="password" required placeholder="ZR-BOOTSTRAP-2026" />
-                  <p className="text-xs text-muted-foreground">القيمة الافتراضية: <code className="font-mono">ZR-BOOTSTRAP-2026</code> — غيّرها من إعدادات النظام بعد الإعداد.</p>
+                  <Input id="secret" name="secret" type="password" required autoComplete="current-password" />
+                  <p className="text-xs text-muted-foreground">إعداد المسؤول الأول محمي برمز سري خاص بالنظام ولا يتم عرضه داخل التطبيق.</p>
                 </div>
                 <Button type="submit" disabled={loading} className="w-full gradient-primary text-primary-foreground">
                   {loading && <Loader2 className="ms-2 h-4 w-4 animate-spin" />}
