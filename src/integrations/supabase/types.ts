@@ -363,60 +363,11 @@ export type Database = {
           },
         ]
       }
-      license_keys: {
-        Row: {
-          activated_at: string | null
-          activated_by: string | null
-          client_name: string
-          created_at: string
-          created_by: string | null
-          device_id: string | null
-          duration_days: number
-          expires_at: string | null
-          id: string
-          key: string
-          notes: string | null
-          status: Database["public"]["Enums"]["license_status"]
-          updated_at: string
-        }
-        Insert: {
-          activated_at?: string | null
-          activated_by?: string | null
-          client_name: string
-          created_at?: string
-          created_by?: string | null
-          device_id?: string | null
-          duration_days?: number
-          expires_at?: string | null
-          id?: string
-          key: string
-          notes?: string | null
-          status?: Database["public"]["Enums"]["license_status"]
-          updated_at?: string
-        }
-        Update: {
-          activated_at?: string | null
-          activated_by?: string | null
-          client_name?: string
-          created_at?: string
-          created_by?: string | null
-          device_id?: string | null
-          duration_days?: number
-          expires_at?: string | null
-          id?: string
-          key?: string
-          notes?: string | null
-          status?: Database["public"]["Enums"]["license_status"]
-          updated_at?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           created_at: string
           full_name: string | null
           id: string
-          license_key_id: string | null
           phone: string | null
           subscription_id: string | null
           updated_at: string
@@ -426,7 +377,6 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
-          license_key_id?: string | null
           phone?: string | null
           subscription_id?: string | null
           updated_at?: string
@@ -436,7 +386,6 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
-          license_key_id?: string | null
           phone?: string | null
           subscription_id?: string | null
           updated_at?: string
@@ -570,7 +519,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      has_active_license: { Args: { _user_id: string }; Returns: boolean }
       has_active_subscription: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
