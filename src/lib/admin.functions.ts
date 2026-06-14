@@ -14,8 +14,28 @@ async function assertAdmin(userId: string) {
 }
 
 function genKey(): string {
-  const a = () => Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `ZR-${a()}-${a()}-${a()}`;
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const segment = () => {
+    const bytes = new Uint8Array(4);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+  };
+  return `ZR-${segment()}-${segment()}-${segment()}`;
+}
+
+async function securelyMatches(actual: string, expected: string) {
+  const encoder = new TextEncoder();
+  const [actualHash, expectedHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(actual)),
+    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
+  ]);
+  const left = new Uint8Array(actualHash);
+  const right = new Uint8Array(expectedHash);
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    difference |= left[index] ^ right[index];
+  }
+  return difference === 0;
 }
 
 export const listLicenses = createServerFn({ method: "GET" })
@@ -24,7 +44,7 @@ export const listLicenses = createServerFn({ method: "GET" })
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
-      .from("license_keys")
+      .from("subscriptions")
       .select("*")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -44,9 +64,9 @@ export const createLicense = createServerFn({ method: "POST" })
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin
-      .from("license_keys")
+      .from("subscriptions")
       .insert({
-        key: genKey(),
+        activation_code: genKey(),
         client_name: data.client_name,
         duration_days: data.duration_days,
         notes: data.notes ?? null,
@@ -74,7 +94,7 @@ export const updateLicense = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { id, ...patch } = data;
     const { data: row, error } = await supabaseAdmin
-      .from("license_keys")
+      .from("subscriptions")
       .update(patch)
       .eq("id", id)
       .select()
@@ -103,29 +123,29 @@ export const renewLicense = createServerFn({ method: "POST" })
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: current, error: currentError } = await supabaseAdmin
-      .from("license_keys")
+      .from("subscriptions")
       .select("*")
       .eq("id", data.id)
       .single();
     if (currentError || !current) throw new Error("الكود غير موجود");
     const base =
-      current.expires_at && new Date(current.expires_at).getTime() > Date.now()
-        ? new Date(current.expires_at)
+      current.end_date && new Date(current.end_date).getTime() > Date.now()
+        ? new Date(current.end_date)
         : new Date();
     const expiresAt = data.expires_at
       ? new Date(data.expires_at)
       : new Date(base.getTime() + Number(data.add_days) * 86_400_000);
     if (expiresAt.getTime() <= Date.now())
       throw new Error("تاريخ الانتهاء الجديد يجب أن يكون في المستقبل");
-    const activatedStatus = current.activated_by ? "active" : "pending";
+    const activatedStatus = current.user_id ? "active" : "pending";
     const { data: row, error } = await supabaseAdmin
-      .from("license_keys")
+      .from("subscriptions")
       .update({
-        expires_at: expiresAt.toISOString(),
+        end_date: expiresAt.toISOString(),
         duration_days: Math.max(
           1,
           Math.ceil(
-            (expiresAt.getTime() - new Date(current.activated_at ?? Date.now()).getTime()) /
+            (expiresAt.getTime() - new Date(current.start_date ?? Date.now()).getTime()) /
               86_400_000,
           ),
         ),
@@ -144,7 +164,7 @@ export const deleteLicense = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("license_keys").delete().eq("id", data.id);
+    const { error } = await supabaseAdmin.from("subscriptions").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -156,7 +176,7 @@ export const adminStats = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const [licenses, customers, invoices] = await Promise.all([
-      supabaseAdmin.from("license_keys").select("status", { count: "exact" }),
+      supabaseAdmin.from("subscriptions").select("status", { count: "exact" }),
       supabaseAdmin.from("customers").select("id", { count: "exact", head: true }),
       supabaseAdmin.from("invoices").select("total"),
     ]);
@@ -189,7 +209,7 @@ export const promoteSelfAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const expected = process.env.ADMIN_BOOTSTRAP_SECRET;
     if (!expected) throw new Error("تم إغلاق إعداد المسؤول الأول لأسباب أمنية");
-    if (data.secret !== expected) throw new Error("الرمز السري غير صحيح");
+    if (!(await securelyMatches(data.secret, expected))) throw new Error("الرمز السري غير صحيح");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("user_roles")

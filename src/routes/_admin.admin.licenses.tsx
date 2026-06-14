@@ -208,12 +208,12 @@ function LicensesPage() {
                     <TableCell className="font-mono text-xs">
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(l.key);
+                          navigator.clipboard.writeText(l.activation_code);
                           toast.success("تم النسخ");
                         }}
                         className="inline-flex items-center gap-1 hover:text-primary"
                       >
-                        {l.key} <Copy className="h-3 w-3" />
+                        {l.activation_code} <Copy className="h-3 w-3" />
                       </button>
                     </TableCell>
                     <TableCell>{l.client_name}</TableCell>
@@ -221,8 +221,8 @@ function LicensesPage() {
                       <Badge variant={STATUS_VARIANT[l.status]}>{STATUS_LABEL[l.status]}</Badge>
                     </TableCell>
                     <TableCell>{l.duration_days} يوم</TableCell>
-                    <TableCell className="font-mono text-xs">{fmtDate(l.activated_at)}</TableCell>
-                    <TableCell className="font-mono text-xs">{fmtDate(l.expires_at)}</TableCell>
+                    <TableCell className="font-mono text-xs">{fmtDate(l.start_date)}</TableCell>
+                    <TableCell className="font-mono text-xs">{fmtDate(l.end_date)}</TableCell>
                     <TableCell className="text-end">
                       <div className="flex justify-end gap-1">
                         <Button

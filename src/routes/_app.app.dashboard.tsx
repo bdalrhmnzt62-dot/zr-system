@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, FileText, Wrench, TrendingUp, ArrowLeft } from "lucide-react";
-import { readCachedLicense } from "@/lib/device-id";
+import { checkSubscription } from "@/lib/license.functions";
+import { useServerFn } from "@tanstack/react-start";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export const Route = createFileRoute("/_app/app/dashboard")({
@@ -26,7 +27,11 @@ function Stat({ label, value, icon: Icon, accent }: { label: string; value: stri
 }
 
 function Dashboard() {
-  const lic = typeof window !== "undefined" ? readCachedLicense() : null;
+  const getSubscription = useServerFn(checkSubscription);
+  const { data: lic } = useQuery({
+    queryKey: ["my-subscription"],
+    queryFn: () => getSubscription(),
+  });
 
   const { data: stats } = useQuery({
     queryKey: ["app-stats"],

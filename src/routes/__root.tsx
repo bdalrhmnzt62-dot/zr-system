@@ -14,7 +14,6 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { setupPwa } from "@/lib/pwa";
-import { startAutomaticSync } from "@/lib/offline-db";
 
 function NotFoundComponent() {
   return (
@@ -152,7 +151,6 @@ function RootComponent() {
 
   useEffect(() => {
     void setupPwa();
-    const stopSync = startAutomaticSync(() => queryClient.invalidateQueries());
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
@@ -163,7 +161,6 @@ function RootComponent() {
     });
     return () => {
       subscription.unsubscribe();
-      stopSync();
     };
   }, [router, queryClient]);
 
