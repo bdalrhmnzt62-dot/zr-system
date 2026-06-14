@@ -418,6 +418,7 @@ export type Database = {
           id: string
           license_key_id: string | null
           phone: string | null
+          subscription_id: string | null
           updated_at: string
           workshop_name: string | null
         }
@@ -427,6 +428,7 @@ export type Database = {
           id: string
           license_key_id?: string | null
           phone?: string | null
+          subscription_id?: string | null
           updated_at?: string
           workshop_name?: string | null
         }
@@ -436,8 +438,65 @@ export type Database = {
           id?: string
           license_key_id?: string | null
           phone?: string | null
+          subscription_id?: string | null
           updated_at?: string
           workshop_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          activation_code: string
+          client_name: string
+          created_at: string
+          created_by: string | null
+          device_id: string | null
+          duration_days: number
+          end_date: string | null
+          id: string
+          notes: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["license_status"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          activation_code: string
+          client_name: string
+          created_at?: string
+          created_by?: string | null
+          device_id?: string | null
+          duration_days?: number
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["license_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          activation_code?: string
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          device_id?: string | null
+          duration_days?: number
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["license_status"]
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -512,6 +571,7 @@ export type Database = {
     }
     Functions: {
       has_active_license: { Args: { _user_id: string }; Returns: boolean }
+      has_active_subscription: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
