@@ -51,7 +51,7 @@ function ActivatePage() {
     if (!key) return;
     setLoading(true);
     try {
-      const lic = await activate({ data: { key, install_id: getInstallId() } });
+      await activate({ data: { key, install_id: getInstallId() } });
       toast.success("تم التفعيل بنجاح");
       navigate({ to: "/app/dashboard" });
     } catch (err: any) {
