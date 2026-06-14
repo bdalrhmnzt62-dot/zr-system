@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_admin/admin/customers")({
 function AdminCustomers() {
   const list = useServerFn(listLicenses);
   const { data: licenses = [], isLoading } = useQuery({ queryKey: ["licenses"], queryFn: () => list() });
-  const activated = licenses.filter((l: any) => l.activated_by);
+  const activated = licenses.filter((l: any) => l.user_id);
 
   return (
     <div className="space-y-6">
@@ -44,10 +44,10 @@ function AdminCustomers() {
                 {activated.map((l: any) => (
                   <TableRow key={l.id}>
                     <TableCell className="font-medium">{l.client_name}</TableCell>
-                    <TableCell className="font-mono text-xs">{l.key}</TableCell>
+                    <TableCell className="font-mono text-xs">{l.activation_code}</TableCell>
                     <TableCell><Badge>{l.status}</Badge></TableCell>
-                    <TableCell className="font-mono text-xs">{l.activated_at ? new Date(l.activated_at).toISOString().slice(0, 10) : "—"}</TableCell>
-                    <TableCell className="font-mono text-xs">{l.expires_at ? new Date(l.expires_at).toISOString().slice(0, 10) : "—"}</TableCell>
+                    <TableCell className="font-mono text-xs">{l.start_date ? new Date(l.start_date).toISOString().slice(0, 10) : "—"}</TableCell>
+                    <TableCell className="font-mono text-xs">{l.end_date ? new Date(l.end_date).toISOString().slice(0, 10) : "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
