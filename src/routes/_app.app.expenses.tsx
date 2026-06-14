@@ -25,6 +25,13 @@ import {
 } from "@/components/ui/table";
 import { Plus, Trash2, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import {
+  fetchWithOfflineCache,
+  getRememberedOwnerId,
+  offlineDelete,
+  offlineUpsert,
+  rememberOwnerId,
+} from "@/lib/offline-db";
 
 export const Route = createFileRoute("/_app/app/expenses")({
   component: ExpensesPage,
@@ -37,14 +44,15 @@ function ExpensesPage() {
 
   const { data: rows = [] } = useQuery({
     queryKey: ["expenses"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("expenses")
-        .select("*")
-        .order("expense_date", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () =>
+      fetchWithOfflineCache("expenses", async () => {
+        const { data, error } = await supabase
+          .from("expenses")
+          .select("*")
+          .order("expense_date", { ascending: false });
+        if (error) throw error;
+        return (data ?? []) as Record<string, unknown>[];
+      }),
   });
 
   const createMut = useMutation({
@@ -52,16 +60,19 @@ function ExpensesPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("غير مسجل");
-      const { error } = await supabase.from("expenses").insert({
-        owner_id: user.id,
+      const ownerId = user?.id ?? (await getRememberedOwnerId());
+      if (!ownerId) throw new Error("افتح النظام مرة واحدة بالإنترنت قبل استخدام الحفظ المحلي");
+      if (user) await rememberOwnerId(user.id);
+      return offlineUpsert("expenses", {
+        owner_id: ownerId,
         title: input.title,
         category: input.category || null,
         amount: Number(input.amount || 0),
         expense_date: input.expense_date,
         notes: input.notes || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["expenses"] });
@@ -73,17 +84,18 @@ function ExpensesPage() {
 
   const updateMut = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: any }) => {
-      const { error } = await supabase
-        .from("expenses")
-        .update({
+      return offlineUpsert(
+        "expenses",
+        {
           title: input.title,
           category: input.category || null,
           amount: Number(input.amount || 0),
           expense_date: input.expense_date,
           notes: input.notes || null,
-        })
-        .eq("id", id);
-      if (error) throw error;
+          updated_at: new Date().toISOString(),
+        },
+        id,
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["expenses"] });
@@ -94,10 +106,7 @@ function ExpensesPage() {
   });
 
   const delMut = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("expenses").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => offlineDelete("expenses", id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["expenses"] });
       toast.success("تم الحذف");

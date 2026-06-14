@@ -32,6 +32,13 @@ import {
 } from "@/components/ui/table";
 import { Plus, Trash2, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import {
+  fetchWithOfflineCache,
+  getRememberedOwnerId,
+  offlineDelete,
+  offlineUpsert,
+  rememberOwnerId,
+} from "@/lib/offline-db";
 
 export const Route = createFileRoute("/_app/app/work-orders")({
   component: WorkOrdersPage,
@@ -130,14 +137,15 @@ function WorkOrdersPage() {
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["work_orders"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("work_orders")
-        .select("*, customers(full_name, plate_number)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () =>
+      fetchWithOfflineCache("work_orders", async () => {
+        const { data, error } = await supabase
+          .from("work_orders")
+          .select("*, customers(full_name, plate_number)")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        return (data ?? []) as Record<string, unknown>[];
+      }),
   });
 
   const { data: customers = [] } = useQuery({
@@ -153,15 +161,18 @@ function WorkOrdersPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("غير مسجل");
-      const { error } = await supabase.from("work_orders").insert({
+      const ownerId = user?.id ?? (await getRememberedOwnerId());
+      if (!ownerId) throw new Error("افتح النظام مرة واحدة بالإنترنت قبل استخدام الحفظ المحلي");
+      if (user) await rememberOwnerId(user.id);
+      return offlineUpsert("work_orders", {
         ...input,
-        owner_id: user.id,
+        owner_id: ownerId,
         total_amount: Number(input.total_amount || 0),
         customer_id: input.customer_id || null,
         status: "open",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["work_orders"] });
@@ -173,16 +184,17 @@ function WorkOrdersPage() {
 
   const updateMut = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: any }) => {
-      const { error } = await supabase
-        .from("work_orders")
-        .update({
+      return offlineUpsert(
+        "work_orders",
+        {
           title: input.title,
           description: input.description || null,
           customer_id: input.customer_id || null,
           total_amount: Number(input.total_amount || 0),
-        })
-        .eq("id", id);
-      if (error) throw error;
+          updated_at: new Date().toISOString(),
+        },
+        id,
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["work_orders"] });
@@ -194,17 +206,13 @@ function WorkOrdersPage() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("work_orders").update({ status: status as any }).eq("id", id);
-      if (error) throw error;
+      return offlineUpsert("work_orders", { status, updated_at: new Date().toISOString() }, id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["work_orders"] }),
   });
 
   const delMut = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("work_orders").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => offlineDelete("work_orders", id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["work_orders"] });
       toast.success("تم الحذف");

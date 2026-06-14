@@ -1,6 +1,5 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ComponentType } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,6 @@ interface Props {
 
 export function AppShell({ items, title, badge, guard, redirectIfGuardFails }: Props) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(!guard);
@@ -33,8 +31,10 @@ export function AppShell({ items, title, badge, guard, redirectIfGuardFails }: P
     (async () => {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) { navigate({ to: "/auth" }); return; }
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) { navigate({ to: "/auth", replace: true }); return; }
+      if (navigator.onLine) {
+        const { data } = await supabase.auth.getUser();
+        if (!data.user) { navigate({ to: "/auth" }); return; }
+      }
       if (guard) {
         const ok = await guard();
         if (cancelled) return;
@@ -47,10 +47,8 @@ export function AppShell({ items, title, badge, guard, redirectIfGuardFails }: P
   }, []);
 
   const handleSignOut = async () => {
-    await queryClient.cancelQueries();
-    queryClient.clear();
     await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    navigate({ to: "/auth" });
   };
 
   if (!ready) {

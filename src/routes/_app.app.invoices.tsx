@@ -34,6 +34,13 @@ import {
 import { Plus, Trash2, Loader2, Printer, ArrowLeft, FileText, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
+import {
+  fetchWithOfflineCache,
+  getRememberedOwnerId,
+  offlineDelete,
+  offlineUpsert,
+  rememberOwnerId,
+} from "@/lib/offline-db";
 
 export const Route = createFileRoute("/_app/app/invoices")({
   component: InvoicesPage,
@@ -56,14 +63,15 @@ function InvoicesPage() {
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["invoices"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("invoices")
-        .select("*, customers(full_name)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () =>
+      fetchWithOfflineCache("invoices", async () => {
+        const { data, error } = await supabase
+          .from("invoices")
+          .select("*, customers(full_name)")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        return (data ?? []) as Record<string, unknown>[];
+      }),
   });
 
   const { data: customers = [] } = useQuery({
@@ -95,10 +103,12 @@ function InvoicesPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("غير مسجل");
+      const ownerId = user?.id ?? (await getRememberedOwnerId());
+      if (!ownerId) throw new Error("افتح النظام مرة واحدة بالإنترنت قبل استخدام الحفظ المحلي");
+      if (user) await rememberOwnerId(user.id);
       const invoice_number = "INV-" + Date.now().toString().slice(-8);
-      const { data: inv, error: invoiceError } = await supabase.from("invoices").insert({
-        owner_id: user.id,
+      const inv = await offlineUpsert("invoices", {
+        owner_id: ownerId,
         customer_id: input.customer_id || null,
         work_order_id: input.work_order_id || null,
         invoice_number,
@@ -109,8 +119,9 @@ function InvoicesPage() {
         tax: 0,
         discount: 0,
         total: 0,
-      }).select().single();
-      if (invoiceError) throw invoiceError;
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
 
       // If a work order was selected, auto-add it as a line item
       if (input.work_order_id) {
@@ -120,7 +131,7 @@ function InvoicesPage() {
           const unit_price = Number(wo.total_amount || 0);
           await supabase.from("invoice_items").insert({
             invoice_id: String(inv.id),
-            owner_id: user.id,
+            owner_id: ownerId,
             description,
             quantity: 1,
             unit_price,
@@ -149,10 +160,7 @@ function InvoicesPage() {
   });
 
   const delMut = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("invoices").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => offlineDelete("invoices", id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["invoices"] });
       toast.success("تم الحذف");
@@ -161,14 +169,15 @@ function InvoicesPage() {
 
   const updateMut = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: any }) => {
-      const { error } = await supabase
-        .from("invoices")
-        .update({
+      return offlineUpsert(
+        "invoices",
+        {
           customer_id: input.customer_id || null,
           notes: input.notes || null,
-        })
-        .eq("id", id);
-      if (error) throw error;
+          updated_at: new Date().toISOString(),
+        },
+        id,
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["invoices"] });
