@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { activateLicense, checkLicense } from "@/lib/license.functions";
+import { activateLicense, checkSubscription } from "@/lib/license.functions";
 import { getInstallId, cacheLicense } from "@/lib/device-id";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/activate")({
 function ActivatePage() {
   const navigate = useNavigate();
   const activate = useServerFn(activateLicense);
-  const check = useServerFn(checkLicense);
+  const check = useServerFn(checkSubscription);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
 
