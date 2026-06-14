@@ -14,8 +14,28 @@ async function assertAdmin(userId: string) {
 }
 
 function genKey(): string {
-  const a = () => Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `ZR-${a()}-${a()}-${a()}`;
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const segment = () => {
+    const bytes = new Uint8Array(4);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+  };
+  return `ZR-${segment()}-${segment()}-${segment()}`;
+}
+
+async function securelyMatches(actual: string, expected: string) {
+  const encoder = new TextEncoder();
+  const [actualHash, expectedHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(actual)),
+    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
+  ]);
+  const left = new Uint8Array(actualHash);
+  const right = new Uint8Array(expectedHash);
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    difference |= left[index] ^ right[index];
+  }
+  return difference === 0;
 }
 
 export const listLicenses = createServerFn({ method: "GET" })
@@ -189,7 +209,7 @@ export const promoteSelfAdmin = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const expected = process.env.ADMIN_BOOTSTRAP_SECRET;
     if (!expected) throw new Error("تم إغلاق إعداد المسؤول الأول لأسباب أمنية");
-    if (data.secret !== expected) throw new Error("الرمز السري غير صحيح");
+    if (!(await securelyMatches(data.secret, expected))) throw new Error("الرمز السري غير صحيح");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin
       .from("user_roles")
