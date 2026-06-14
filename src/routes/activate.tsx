@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { activateLicense, checkSubscription } from "@/lib/license.functions";
-import { getInstallId, cacheLicense } from "@/lib/device-id";
+import { getInstallId } from "@/lib/device-id";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,12 +36,6 @@ function ActivatePage() {
       try {
         const lic = await check();
         if (lic) {
-          cacheLicense({
-            key: lic.key,
-            client_name: lic.client_name,
-            activated_at: lic.activated_at!,
-            expires_at: lic.expires_at,
-          });
           navigate({ to: "/app/dashboard" });
           return;
         }
@@ -58,12 +52,6 @@ function ActivatePage() {
     setLoading(true);
     try {
       const lic = await activate({ data: { key, install_id: getInstallId() } });
-      cacheLicense({
-        key: lic.key,
-        client_name: lic.client_name,
-        activated_at: lic.activated_at,
-        expires_at: lic.expires_at,
-      });
       toast.success("تم التفعيل بنجاح");
       navigate({ to: "/app/dashboard" });
     } catch (err: any) {
