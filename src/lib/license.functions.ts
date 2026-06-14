@@ -30,7 +30,7 @@ export const activateLicense = createServerFn({ method: "POST" })
       if (lic.device_id && lic.device_id !== data.install_id) {
         throw new Error("هذا الكود مفعّل على جهة تثبيت أخرى ولا يمكن استخدامه هنا");
       }
-      if (lic.activated_by && lic.activated_by !== userId) {
+      if (lic.user_id && lic.user_id !== userId) {
         throw new Error("هذا الكود مرتبط بمستخدم آخر");
       }
       if (lic.end_date && new Date(lic.end_date) < new Date()) {
