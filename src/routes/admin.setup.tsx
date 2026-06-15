@@ -1,8 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
-import { promoteSelfAdmin, getMyRole } from "@/lib/admin.functions";
+import { promoteSelfAdmin } from "@/lib/admin.functions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,86 +18,52 @@ export const Route = createFileRoute("/admin/setup")({
 function SetupPage() {
   const navigate = useNavigate();
   const promote = useServerFn(promoteSelfAdmin);
-  const getRole = useServerFn(getMyRole);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) {
-        navigate({ to: "/auth" });
-        return;
-      }
-      try {
-        const r = await getRole();
-        if (r.roles.includes("admin")) navigate({ to: "/admin/dashboard" });
-      } catch {
-        /* noop */
-      }
-    })();
-  }, [navigate, getRole]);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const secretInput = String(f.get("secret") || "");
+    
+    // هذا هو الرمز السري الخاص بك
+    const MY_SECRET = "Jeo123456789#$";
+
     setLoading(true);
-    try {
-      await promote({ data: { secret: String(f.get("secret") || "") } });
-      toast.success("تم منحك صلاحيات المسؤول");
-      navigate({ to: "/admin/dashboard" });
-    } catch (err: any) {
-      toast.error(err?.message ?? "فشلت العملية");
-    } finally {
-      setLoading(false);
+    
+    // التحقق المباشر
+    if (secretInput === MY_SECRET) {
+      try {
+        await promote({ data: { secret: secretInput } });
+        toast.success("تم تفعيل صلاحيات المسؤول بنجاح!");
+        navigate({ to: "/admin/dashboard" });
+      } catch (err: any) {
+        toast.error("حدث خطأ في الاتصال بقاعدة البيانات");
+      }
+    } else {
+      toast.error("الرمز السري غير صحيح، حاول مجدداً");
     }
+    
+    setLoading(false);
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <div className="absolute inset-0 gradient-hero" />
-      <div className="relative flex min-h-screen items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md">
-          <div className="mb-6 flex justify-center">
-            <Link to="/">
-              <Logo />
-            </Link>
-          </div>
-          <Card className="bg-card/95 shadow-elegant backdrop-blur">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-xl gradient-primary shadow-elegant">
-                <ShieldCheck className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <CardTitle>إعداد المسؤول الأول</CardTitle>
-              <CardDescription>أدخل الرمز السري للحصول على صلاحيات المسؤول</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={onSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="secret">الرمز السري</Label>
-                  <Input
-                    id="secret"
-                    name="secret"
-                    type="password"
-                    required
-                    autoComplete="current-password"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    إعداد المسؤول الأول محمي برمز سري خاص بالنظام ولا يتم عرضه داخل التطبيق.
-                  </p>
-                </div>
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full gradient-primary text-primary-foreground"
-                >
-                  {loading && <Loader2 className="ms-2 h-4 w-4 animate-spin" />}
-                  منحي صلاحيات المسؤول
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+    <div className="relative min-h-screen flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <ShieldCheck className="mx-auto h-12 w-12 text-primary" />
+          <CardTitle>إعداد المسؤول</CardTitle>
+          <CardDescription>أدخل رمز المسؤول الخاص بك</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={onSubmit} className="space-y-4">
+            <Label htmlFor="secret">الرمز السري</Label>
+            <Input id="secret" name="secret" type="password" required />
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? <Loader2 className="animate-spin" /> : "دخول"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
