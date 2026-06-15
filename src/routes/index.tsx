@@ -35,7 +35,6 @@ function Landing() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Logo />
           <nav className="hidden items-center gap-2 md:flex">
-            <Button asChild variant="ghost"><Link to="/admin/setup">لوحة المسؤول</Link></Button>
             <Button asChild variant="ghost"><Link to="/activate">تفعيل النظام</Link></Button>
             <Button asChild variant="ghost"><Link to="/auth">تسجيل الدخول</Link></Button>
             <Button asChild className="gradient-primary text-primary-foreground shadow-elegant">
@@ -43,7 +42,6 @@ function Landing() {
             </Button>
           </nav>
           <div className="flex items-center gap-2 md:hidden">
-            <Button asChild size="sm" variant="ghost"><Link to="/admin/setup">أدمن</Link></Button>
             <Button asChild size="sm" className="gradient-primary text-primary-foreground">
               <Link to="/auth">دخول</Link>
             </Button>
