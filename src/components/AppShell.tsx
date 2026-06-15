@@ -1,4 +1,5 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ComponentType } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
@@ -22,6 +23,7 @@ interface Props {
 
 export function AppShell({ items, title, badge, guard, redirectIfGuardFails }: Props) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(!guard);
@@ -47,8 +49,10 @@ export function AppShell({ items, title, badge, guard, redirectIfGuardFails }: P
   }, []);
 
   const handleSignOut = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
     await supabase.auth.signOut();
-    navigate({ to: "/auth" });
+    navigate({ to: "/auth", replace: true });
   };
 
   if (!ready) {

@@ -15,7 +15,7 @@ export const activateLicense = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
 
     // 1. Look up the key
-    const { data: lic, error: licErr } = await supabaseAdmin
+    const { data: lic, error: licErr } = await (supabaseAdmin as any)
       .from("license_keys")
       .select("*")
       .eq("key", data.key)
@@ -35,7 +35,7 @@ export const activateLicense = createServerFn({ method: "POST" })
         throw new Error("هذا الكود مرتبط بمستخدم آخر");
       }
       if (lic.expires_at && new Date(lic.expires_at) < new Date()) {
-        await supabaseAdmin.from("license_keys").update({ status: "expired" }).eq("id", lic.id);
+        await (supabaseAdmin as any).from("license_keys").update({ status: "expired" }).eq("id", lic.id);
         throw new Error("هذا الكود منتهي الصلاحية");
       }
       return {
@@ -50,7 +50,7 @@ export const activateLicense = createServerFn({ method: "POST" })
     const now = new Date();
     const expires = new Date(now.getTime() + lic.duration_days * 24 * 60 * 60 * 1000);
 
-    const { data: updated, error: updErr } = await supabaseAdmin
+    const { data: updated, error: updErr } = await (supabaseAdmin as any)
       .from("license_keys")
       .update({
         status: "active",
@@ -81,7 +81,7 @@ export const checkLicense = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("license_keys")
       .select("key, client_name, status, expires_at, activated_at, device_id")
       .eq("activated_by", userId)
@@ -91,7 +91,7 @@ export const checkLicense = createServerFn({ method: "GET" })
     if (!data) return null;
     if (data.expires_at && new Date(data.expires_at) < new Date()) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin.from("license_keys").update({ status: "expired" }).eq("key", data.key);
+      await (supabaseAdmin as any).from("license_keys").update({ status: "expired" }).eq("key", data.key);
       return null;
     }
     return data;
