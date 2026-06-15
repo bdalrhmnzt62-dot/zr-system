@@ -4,7 +4,7 @@ import { z } from "zod";
 
 async function assertAdmin(userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
+  const { data } = await (supabaseAdmin as any)
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
@@ -23,7 +23,7 @@ export const listLicenses = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (supabaseAdmin as any)
       .from("license_keys")
       .select("*")
       .order("created_at", { ascending: false });
@@ -43,7 +43,7 @@ export const createLicense = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await (supabaseAdmin as any)
       .from("license_keys")
       .insert({
         key: genKey(),
@@ -73,7 +73,7 @@ export const updateLicense = createServerFn({ method: "POST" })
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { id, ...patch } = data;
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await (supabaseAdmin as any)
       .from("license_keys")
       .update(patch)
       .eq("id", id)
@@ -102,7 +102,7 @@ export const renewLicense = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: current, error: currentError } = await supabaseAdmin
+    const { data: current, error: currentError } = await (supabaseAdmin as any)
       .from("license_keys")
       .select("*")
       .eq("id", data.id)
@@ -118,7 +118,7 @@ export const renewLicense = createServerFn({ method: "POST" })
     if (expiresAt.getTime() <= Date.now())
       throw new Error("تاريخ الانتهاء الجديد يجب أن يكون في المستقبل");
     const activatedStatus = current.activated_by ? "active" : "pending";
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await (supabaseAdmin as any)
       .from("license_keys")
       .update({
         expires_at: expiresAt.toISOString(),
@@ -144,7 +144,7 @@ export const deleteLicense = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("license_keys").delete().eq("id", data.id);
+    const { error } = await (supabaseAdmin as any).from("license_keys").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -156,13 +156,13 @@ export const adminStats = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const [licenses, customers, invoices] = await Promise.all([
-      supabaseAdmin.from("license_keys").select("status", { count: "exact" }),
-      supabaseAdmin.from("customers").select("id", { count: "exact", head: true }),
-      supabaseAdmin.from("invoices").select("total"),
+      (supabaseAdmin as any).from("license_keys").select("status", { count: "exact" }),
+      (supabaseAdmin as any).from("customers").select("id", { count: "exact", head: true }),
+      (supabaseAdmin as any).from("invoices").select("total"),
     ]);
 
     const byStatus: Record<string, number> = { pending: 0, active: 0, expired: 0, revoked: 0 };
-    (licenses.data ?? []).forEach((l) => {
+    (licenses.data ?? []).forEach((l: { status: string }) => {
       byStatus[l.status as string] = (byStatus[l.status as string] ?? 0) + 1;
     });
 
@@ -191,7 +191,7 @@ export const promoteSelfAdmin = createServerFn({ method: "POST" })
     if (!expected) throw new Error("تم إغلاق إعداد المسؤول الأول لأسباب أمنية");
     if (data.secret !== expected) throw new Error("الرمز السري غير صحيح");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const { error } = await (supabaseAdmin as any)
       .from("user_roles")
       .upsert({ user_id: context.userId, role: "admin" }, { onConflict: "user_id,role" });
     if (error) throw new Error(error.message);
@@ -202,11 +202,11 @@ export const getMyRole = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
+    const { data } = await (supabaseAdmin as any)
       .from("user_roles")
       .select("role")
       .eq("user_id", context.userId);
-    return { roles: (data ?? []).map((r) => r.role as string) };
+    return { roles: (data ?? []).map((r: { role: string }) => r.role) };
   });
 
 const AdminSettingsSchema = z.object({
@@ -221,7 +221,7 @@ export const getAdminSettings = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await (supabaseAdmin as any)
       .from("admin_settings")
       .select("*")
       .eq("user_id", context.userId)
@@ -238,7 +238,7 @@ export const saveAdminSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await (supabaseAdmin as any)
       .from("admin_settings")
       .upsert({ ...data, user_id: context.userId }, { onConflict: "user_id" })
       .select()

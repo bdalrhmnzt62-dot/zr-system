@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AppShell, type NavItem } from "@/components/AppShell";
+import { supabase } from "@/integrations/supabase/client";
 import { validateCachedLicense, clearCachedLicense, cacheLicense } from "@/lib/device-id";
 import { checkLicense } from "@/lib/license.functions";
 import { toast } from "sonner";
@@ -15,6 +16,12 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/_app")({
+  ssr: false,
+  beforeLoad: async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw redirect({ to: "/auth" });
+    return { user: data.user };
+  },
   component: ClientAppLayout,
 });
 

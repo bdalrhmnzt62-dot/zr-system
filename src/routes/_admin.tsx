@@ -1,9 +1,20 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AppShell, type NavItem } from "@/components/AppShell";
-import { getMyRole } from "@/lib/admin.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { LayoutDashboard, KeyRound, Settings, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_admin")({
+  ssr: false,
+  beforeLoad: async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw redirect({ to: "/auth" });
+    const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", {
+      _user_id: data.user.id,
+      _role: "admin",
+    });
+    if (roleError || !isAdmin) throw redirect({ to: "/app/dashboard" });
+    return { user: data.user };
+  },
   component: AdminLayout,
 });
 
@@ -20,13 +31,6 @@ function AdminLayout() {
       items={items}
       title="لوحة المسؤول"
       badge="ADMIN"
-      guard={async () => {
-        try {
-          const { roles } = await getMyRole();
-          return roles.includes("admin");
-        } catch { return false; }
-      }}
-      redirectIfGuardFails="/admin/setup"
     />
   );
 }

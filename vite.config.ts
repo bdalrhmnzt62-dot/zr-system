@@ -5,10 +5,21 @@
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { loadEnv } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+const env = loadEnv(process.env.NODE_ENV === "production" ? "production" : "development", process.cwd(), "");
+const publicUrl = env.VITE_SUPABASE_URL;
+const publicKey = env.VITE_SUPABASE_ANON_KEY ?? env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
 export default defineConfig({
+  nitro: { preset: process.env.VERCEL ? "vercel" : "node-server" },
   vite: {
+    define: {
+      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(publicKey),
+      "process.env.SUPABASE_URL": JSON.stringify(publicUrl),
+      "process.env.SUPABASE_PUBLISHABLE_KEY": JSON.stringify(publicKey),
+    },
     plugins: [
       VitePWA({
         registerType: "autoUpdate",
