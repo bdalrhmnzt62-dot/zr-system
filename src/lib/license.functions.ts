@@ -67,7 +67,7 @@ export const activateLicense = createServerFn({ method: "POST" })
     if (updErr || !updated) throw new Error("تعذر تفعيل الكود، قد يكون مستخدماً بالفعل");
 
     // 4. Link to profile
-    await supabase.from("profiles").update({ license_key_id: updated.id }).eq("id", userId);
+    await (supabase as any).from("profiles").update({ license_key_id: updated.id }).eq("id", userId);
 
     return {
       key: updated.key,
