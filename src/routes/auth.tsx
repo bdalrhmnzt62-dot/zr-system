@@ -52,7 +52,7 @@ function AuthPage() {
       email: String(f.get("email")),
       password: String(f.get("password")),
       options: {
-        emailRedirectTo: window.location.origin + "/activate",
+        emailRedirectTo: window.location.origin,
         data: { full_name: String(f.get("full_name") ?? "") },
       },
     });
