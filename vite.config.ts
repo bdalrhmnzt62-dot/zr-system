@@ -13,7 +13,7 @@ const publicUrl = env.VITE_SUPABASE_URL;
 const publicKey = env.VITE_SUPABASE_ANON_KEY ?? env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export default defineConfig({
-  nitro: true,
+  nitro: { preset: process.env.VERCEL ? "vercel" : "node-server" },
   vite: {
     define: {
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(publicKey),

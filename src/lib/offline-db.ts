@@ -49,6 +49,16 @@ export async function getRememberedOwnerId() {
   return (await db?.get("meta", "owner_id"))?.value ?? null;
 }
 
+export async function clearOfflineData() {
+  const db = await dbPromise;
+  if (!db) return;
+  await Promise.all([
+    db.clear("collections"),
+    db.clear("pending"),
+    db.clear("meta"),
+  ]);
+}
+
 export async function cacheRows(table: OfflineTable, rows: Record<string, unknown>[]) {
   const db = await dbPromise;
   if (db) await db.put("collections", { key: collectionKey(table), rows, updatedAt: Date.now() });

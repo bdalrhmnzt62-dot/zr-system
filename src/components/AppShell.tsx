@@ -2,6 +2,7 @@ import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-route
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ComponentType } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { clearOfflineData } from "@/lib/offline-db";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ export function AppShell({ items, title, badge, guard, redirectIfGuardFails }: P
   const handleSignOut = async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
+    await clearOfflineData();
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   };
