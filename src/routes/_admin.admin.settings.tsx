@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { getAdminSettings, saveAdminSettings } from "@/lib/admin.functions";
+import { getAdminSettings, saveAdminSettings, getAdminSetupCode, updateAdminSetupCode } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,8 +20,24 @@ function AdminSettingsPage() {
   const queryClient = useQueryClient();
   const load = useServerFn(getAdminSettings);
   const save = useServerFn(saveAdminSettings);
+  const loadSetupCode = useServerFn(getAdminSetupCode);
+  const saveSetupCode = useServerFn(updateAdminSetupCode);
   const [autoSync, setAutoSync] = useState(true);
   const [inventoryAlerts, setInventoryAlerts] = useState(true);
+
+  const { data: adminSetupCodeData, isLoading: isLoadingSetupCode } = useQuery({
+    queryKey: ["admin-setup-code"],
+    queryFn: () => loadSetupCode(),
+  });
+
+  const setupCodeMutation = useMutation({
+    mutationFn: (code: string) => saveSetupCode({ data: { code } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-setup-code"] });
+      toast.success("تم تحديث رمز تفعيل الأدمن بنجاح");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["admin-settings"],
@@ -282,6 +298,53 @@ function AdminSettingsPage() {
         </TabsContent>
 
         <TabsContent value="permissions">
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>رمز تفعيل صفحة الأدمن</CardTitle>
+              <CardDescription>
+                هذا هو الكود السري الذي يتم استخدامه في صفحة /admin/setup لترقية أي مستخدم إلى رتبة مسؤول (الأدمن). يمكنك تعديله هنا في أي وقت لحماية النظام.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingSetupCode ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                </div>
+              ) : (
+                <form
+                  className="max-w-md space-y-4"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const form = new FormData(event.currentTarget);
+                    const code = String(form.get("setup_code")).trim();
+                    if (code.length < 4) {
+                      return toast.error("يجب ألا يقل الرمز عن 4 أحرف");
+                    }
+                    setupCodeMutation.mutate(code);
+                  }}
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="setup_code">رمز تفعيل الأدمن الحالي</Label>
+                    <Input
+                      id="setup_code"
+                      name="setup_code"
+                      type="text"
+                      defaultValue={adminSetupCodeData?.code}
+                      placeholder="أدخل رمز تفعيل جديد"
+                      required
+                      dir="ltr"
+                      className="font-mono"
+                    />
+                  </div>
+                  <Button type="submit" disabled={setupCodeMutation.isPending}>
+                    <Save className="ms-2 h-4 w-4" />
+                    حفظ رمز التفعيل
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>صلاحيات المسؤول</CardTitle>
@@ -303,4 +366,4 @@ function AdminSettingsPage() {
       </Tabs>
     </div>
   );
-}
+                       }
