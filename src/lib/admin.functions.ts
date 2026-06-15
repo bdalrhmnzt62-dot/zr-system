@@ -187,14 +187,37 @@ export const promoteSelfAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => PromoteAdminSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const expected = process.env.ADMIN_BOOTSTRAP_SECRET;
-    if (!expected) throw new Error("تم إغلاق إعداد المسؤول الأول لأسباب أمنية");
-    if (data.secret !== expected) throw new Error("الرمز السري غير صحيح");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    
+    // Check if a custom bootstrap secret exists in the database
+    const { data: dbSecretRow } = await (supabaseAdmin as any)
+      .from("license_keys")
+      .select("key")
+      .eq("client_name", "__ADMIN_SETUP_SECRET__")
+      .maybeSingle();
+
+    const expected = dbSecretRow?.key || process.env.ADMIN_BOOTSTRAP_SECRET || "ZR-ADMIN-2026";
+    
+    if (data.secret !== expected) throw new Error("الرمز السري غير صحيح");
+    
     const { error } = await (supabaseAdmin as any)
       .from("user_roles")
       .upsert({ user_id: context.userId, role: "admin" }, { onConflict: "user_id,role" });
     if (error) throw new Error(error.message);
+    
+    // If it was the first time using fallback or default, save it to the DB so everything is synchronized
+    if (!dbSecretRow) {
+      await (supabaseAdmin as any)
+        .from("license_keys")
+        .insert({
+          key: expected,
+          client_name: "__ADMIN_SETUP_SECRET__",
+          duration_days: 365,
+          status: "active",
+          created_by: context.userId,
+        });
+    }
+
     return { ok: true };
   });
 
@@ -245,4 +268,53 @@ export const saveAdminSettings = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     return row;
+  });
+
+export const getAdminSetupCode = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await (supabaseAdmin as any)
+      .from("license_keys")
+      .select("key")
+      .eq("client_name", "__ADMIN_SETUP_SECRET__")
+      .maybeSingle();
+    return { code: data?.key || process.env.ADMIN_BOOTSTRAP_SECRET || "ZR-ADMIN-2026" };
+  });
+
+const UpdateAdminSetupCodeSchema = z.object({ code: z.string().trim().min(4) });
+
+export const updateAdminSetupCode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => UpdateAdminSetupCodeSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    
+    const { data: existing } = await (supabaseAdmin as any)
+      .from("license_keys")
+      .select("id")
+      .eq("client_name", "__ADMIN_SETUP_SECRET__")
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await (supabaseAdmin as any)
+        .from("license_keys")
+        .update({ key: data.code })
+        .eq("id", existing.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await (supabaseAdmin as any)
+        .from("license_keys")
+        .insert({
+          key: data.code,
+          client_name: "__ADMIN_SETUP_SECRET__",
+          duration_days: 365,
+          status: "active",
+          created_by: context.userId,
+        });
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
   });
